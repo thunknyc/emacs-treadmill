@@ -1,10 +1,16 @@
-;; -*- lexical-binding t -*-
+;; -*- lexical-binding: t -*-
 
 ;; (setq gp (treadmill-start-server))
 ;; (treadmill-eval-lowlevel gp "(import :thunknyc/treadmill)")
+;; (treadmill-eval-lowlevel gp "(import :thunknyc/apropos)")
+;; (treadmill-eval-lowlevel gp "(+ 1 1)")
 ;; (treadmill-eval gp "(read)" "(+ 1 1)")
-;; (treadmill-eval gp "(map 1+ (iota 10))" "")
+;; (treadmill-eval gp "(string-append \"foo\" \"bar\")" "")
+;; (treadmill-eval gp "(apropos-re \"^disp\")" "")
+;; (treadmill-apropos-prefix gp "call-with-current-")
 ;; (treadmill-clean-up gp)
+
+(require 'subr-x)
 
 (defconst treadmill-interpreter-path "/Users/edw/dev/gerbil/bin/gxi")
 
@@ -15,6 +21,33 @@
 (defun treadmill-command ()
   (list treadmill-interpreter-path
         "-e" "(import :thunknyc/treadmill) (start-treadmill!)"))
+
+(defun treadmill-completion-filter (proc)
+  (let ((proc proc))
+    (lambda (p s)
+      ;; Boilerplate
+      (when (buffer-live-p (process-buffer p))
+        (with-current-buffer (process-buffer p)
+          (let ((moving (= (point) (process-mark p))))
+            (save-excursion
+              ;; Insert the text, advancing the process marker.
+              (goto-char (process-mark p))
+              (insert s)
+              (set-marker (process-mark p) (point)))
+            (if moving (goto-char (process-mark p))))))
+      ;; Not boilerplate
+      (with-current-buffer (process-buffer p)
+        (when treadmill-repl-awaiting-value
+          (save-excursion
+            (goto-char 0)
+            (when (search-forward-regexp
+                   "^\\(\\(.*\r\n\\)+\\)[0-9]*> $"
+                   nil t)
+              (setq treadmill-repl-awaiting-value nil)
+              (let ((result (string-trim (match-string 1))))
+                (if (zerop (length result))
+                    (message "No value in completion filter")
+                  (funcall proc result))))))))))
 
 (defun treadmill-repl-filter-lowlevel (p s)
   ;; Boilerplate
@@ -32,12 +65,14 @@
     (when treadmill-repl-awaiting-value
       (save-excursion
         (goto-char 0)
-        (when (search-forward-regexp "\\(\\(.+\\)\r\n\\|\\)[0-9]*> $" nil t)
-          (let ((result (match-string 1)))
+        (when (search-forward-regexp
+               "^\\(\\(.*\r\n\\)+\\)[0-9]*> $"
+               nil t)
+          (setq treadmill-repl-awaiting-value nil)
+          (let ((result (string-trim (match-string 1))))
             (if (zerop (length result))
                 (message "=> No value")
-              (message "=> %S" (match-string 2))))
-          (setq treadmill-repl-awaiting-value nil))))))
+              (message "=> %S" result))))))))
 
 
 (defun treadmill-repl-filter (p s)
@@ -56,12 +91,14 @@
     (when treadmill-repl-awaiting-value
       (save-excursion
         (goto-char 0)
-        (when (search-forward-regexp "\\(\\(.+\\)\r\n\\|\\)[0-9]*> $" nil t)
-          (let ((result (match-string 1)))
+        (when (search-forward-regexp
+               "^\\(\\(.*\r\n\\)+\\)[0-9]*> $"
+               nil t)
+          (setq treadmill-repl-awaiting-value nil)
+          (let ((result (string-trim (match-string 1))))
             (if (zerop (length result))
                 (message "=> No value")
-              (message "=> %S" (read (match-string 2)))))
-          (setq treadmill-repl-awaiting-value nil))))))
+              (message "=> %S" (read result)))))))))
 
 (defun treadmill-process-filter (p s)
   ;; Boilerplate
@@ -79,8 +116,9 @@
     (when (null treadmill-port)
       (save-excursion
         (goto-char 0)
-        (when (search-forward-regexp "Running net repl on port \\([0-9]+\\)."
-                                     nil t)
+        (when (search-forward-regexp
+               "Running net repl on port \\([0-9]+\\)."
+               nil t)
           (let ((port (string-to-number (match-string 1))))
             (setq treadmill-port port)
             (message "Net repl starting on port %d." port)
@@ -135,7 +173,7 @@
     (treadmill-send-string p s)))
 
 (defun treadmill-eval (p expr-string input-string)
-    (with-current-buffer (treadmill-repl-buffer p)
+  (with-current-buffer (treadmill-repl-buffer p)
     (erase-buffer)
     (setq treadmill-repl-awaiting-value t)
     (set-process-filter (treadmill-repl-process p)
@@ -143,3 +181,17 @@
     (let ((s (format "(eval-string/input-string %S %S)"
                      expr-string input-string)))
       (treadmill-send-string p s))))
+
+(defun treadmill-eval-lowlevel* (p s completion)
+  (with-current-buffer (treadmill-repl-buffer p)
+    (erase-buffer)
+    (setq treadmill-repl-awaiting-value t)
+    (set-process-filter (treadmill-repl-process p)
+                        (treadmill-completion-filter completion))
+    (treadmill-send-string p s)))
+
+(defun treadmill-apropos-prefix (p prefix)
+  (treadmill-eval-lowlevel*
+   p
+   (format "(apropos-re \"^%s\")" prefix)
+   (lambda (v) (message "Apropos result: %S" v))))
