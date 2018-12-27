@@ -1,22 +1,44 @@
 ;; -*- lexical-binding t -*-
 
 ;; (setq gp (treadmill-start-server))
-;; (treadmill-eval gp '(import :thunknyc/ioenv))
-;; (treadmill-eval gp '(begin/string-io "(+ 1 2)" (displayln (eval (read)))))
-;; (treadmill-eval gp '(map 1+ (iota 10)))
-;; (treadmill-eval gp '(list + 1 2))
+;; (treadmill-eval-lowlevel gp "(import :thunknyc/treadmill)")
+;; (treadmill-eval gp "(read)" "(+ 1 1)")
+;; (treadmill-eval gp "(map 1+ (iota 10))" "")
 ;; (treadmill-clean-up gp)
 
 (defconst treadmill-interpreter-path "/Users/edw/dev/gerbil/bin/gxi")
-(defconst treadmill-runner-script
-  "/Users/edw/dev/emacs-treadmill/treadmill.ss")
 
 (defvar-local treadmill-port nil)
 (defvar-local treadmill-repl-process nil)
 (defvar-local treadmill-repl-awaiting-value nil)
 
 (defun treadmill-command ()
-  (list treadmill-interpreter-path treadmill-runner-script))
+  (list treadmill-interpreter-path
+        "-e" "(import :thunknyc/treadmill) (start-treadmill!)"))
+
+(defun treadmill-repl-filter-lowlevel (p s)
+  ;; Boilerplate
+  (when (buffer-live-p (process-buffer p))
+    (with-current-buffer (process-buffer p)
+      (let ((moving (= (point) (process-mark p))))
+        (save-excursion
+          ;; Insert the text, advancing the process marker.
+          (goto-char (process-mark p))
+          (insert s)
+          (set-marker (process-mark p) (point)))
+        (if moving (goto-char (process-mark p))))))
+  ;; Not boilerplate
+  (with-current-buffer (process-buffer p)
+    (when treadmill-repl-awaiting-value
+      (save-excursion
+        (goto-char 0)
+        (when (search-forward-regexp "\\(\\(.+\\)\r\n\\|\\)[0-9]*> $" nil t)
+          (let ((result (match-string 1)))
+            (if (zerop (length result))
+                (message "=> No value")
+              (message "=> %S" (match-string 2))))
+          (setq treadmill-repl-awaiting-value nil))))))
+
 
 (defun treadmill-repl-filter (p s)
   ;; Boilerplate
@@ -38,7 +60,7 @@
           (let ((result (match-string 1)))
             (if (zerop (length result))
                 (message "=> No value")
-              (message "=> %S" (match-string 2))))
+              (message "=> %S" (read (match-string 2)))))
           (setq treadmill-repl-awaiting-value nil))))))
 
 (defun treadmill-process-filter (p s)
@@ -69,7 +91,6 @@
          (repl-p (open-network-stream "treadmill-repl"
                                       repl-b "127.0.0.1"
                                       port)))
-    (set-process-filter repl-p 'treadmill-repl-filter)
     (setq treadmill-repl-process repl-p)
     (message "Repl process is `%s'." repl-p)
     (message "Connected to repl on port %d." port)))
@@ -105,15 +126,20 @@
 (defun treadmill-send-string (p s)
   (process-send-string (treadmill-repl-process p) s))
 
-(defun treadmill-eval (p e)
+(defun treadmill-eval-lowlevel (p s)
   (with-current-buffer (treadmill-repl-buffer p)
     (erase-buffer)
     (setq treadmill-repl-awaiting-value t)
-    (treadmill-send-string p (format "%S\n" e))))
+    (set-process-filter (treadmill-repl-process p)
+                        'treadmill-repl-filter-lowlevel)
+    (treadmill-send-string p s)))
 
-;; (setq gp (treadmill-start-server))
-;; (treadmill-eval gp '(import :thunknyc/ioenv))
-;; (treadmill-eval gp '(begin/string-io "(+ 1 2)" (displayln (eval (read)))))
-;; (treadmill-eval gp '(map 1+ (iota 10)))
-;; (treadmill-eval gp '(list + 1 2))
-;; (treadmill-clean-up gp)
+(defun treadmill-eval (p expr-string input-string)
+    (with-current-buffer (treadmill-repl-buffer p)
+    (erase-buffer)
+    (setq treadmill-repl-awaiting-value t)
+    (set-process-filter (treadmill-repl-process p)
+                        'treadmill-repl-filter)
+    (let ((s (format "(eval-string/input-string %S %S)"
+                     expr-string input-string)))
+      (treadmill-send-string p s))))
