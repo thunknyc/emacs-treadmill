@@ -135,14 +135,25 @@
             (message "Net repl starting on port %d." port)
             (treadmill-connect treadmill-host port)))))))
 
-(defun treadmill-log-buffer (s)
-  (message "%s %S" s (current-buffer)))
+(defun treadmill-secure-history ()
+  (let ((saved-inhibit-read-only inhibit-read-only))
+    (setq inhibit-read-only t)
+    (add-text-properties (point-min) (point-max)
+                         '(front-sticky t rear-nonsticky t read-only t))
+    (setq inhibit-read-only saved-inhibit-read-only)))
+
+(defun treadmill-insert (what)
+  (let ((saved-inhibit-read-only inhibit-read-only))
+    (setq inhibit-read-only t)
+    (insert what)
+    (setq inhibit-read-only saved-inhibit-read-only)))
 
 (defun treadmill-issue-prompt ()
   (interactive)
   (goto-char (point-max))
-  (insert "> ")
-  (setq treadmill-ia-mark (point-max-marker)))
+  (treadmill-insert "> ")
+  (setq treadmill-ia-mark (point-max-marker))
+  (treadmill-secure-history))
 
 (defun treadmill-eval ()
   (interactive)
@@ -150,7 +161,8 @@
         (stdin "")
         (b (current-buffer)))
     (goto-char (point-max))
-    (insert (format-message "\nEvaluating `%s' with STDIN `%s'\n" s stdin))
+    (treadmill-insert (format-message "\nEvaluating `%s' with STDIN `%s'\n"
+                                      s stdin))
     (treadmill-eval-complete
      s stdin
      (lambda (val)
@@ -159,8 +171,8 @@
              (stderr (caddr val)))
          (with-current-buffer b
            (goto-char (point-max))
-           (insert (format-message "=> %s\nSTDOUT:%s\nSTDERR:%s\n"
-                                   results stdout stderr))
+           (treadmill-insert (format-message "=> %s\nSTDOUT:%s\nSTDERR:%s\n"
+                                             results stdout stderr))
            (treadmill-issue-prompt)))))))
 
 (defun treadmill-connect (host port)
@@ -187,7 +199,7 @@
               (setq treadmill-repl-process repl-p))
       (switch-to-buffer b)
       (setq treadmill-repl-process repl-p)
-      (insert ";; Welcome to the Gerbil Treadmill\n\n")
+      (insert ";; Welcome to the Gerbil Treadmill\n")
       (treadmill-issue-prompt)
       (treadmill-mode))))
 
@@ -241,6 +253,15 @@
                      expr-string input-string)))
       (treadmill-send-string* p s))))
 
+(defun treadmill-eval-lowlevel-complete (s completion)
+  (let ((p treadmill-repl-process))
+    (with-current-buffer (process-buffer p)
+      (erase-buffer)
+      (setq treadmill-repl-awaiting-value t)
+      (set-process-filter (treadmill-repl-process* p)
+                          (treadmill-lowlevel-completion-filter completion))
+      (process-send-string p s))))
+
 (defun treadmill-eval-complete* (p expr-string input-string completion)
   (with-current-buffer (treadmill-repl-buffer* p)
     (erase-buffer)
@@ -256,7 +277,7 @@
 ;; spawning is not necessary.
 (defun treadmill-eval-complete (expr-string input-string completion)
   (let ((p treadmill-repl-process))
-    (with-current-buffer (process-buffer treadmill-repl-process)
+    (with-current-buffer (process-buffer p)
       (erase-buffer)
       (setq treadmill-repl-awaiting-value t)
       (set-process-filter p (treadmill-repl-completion-filter completion))
@@ -295,12 +316,35 @@
     (treadmill-repl-quit))
   (kill-buffer))
 
+(defun treadmill-symbol-at-point ()
+  (when (re-search-backward "")
+    (match-string 0)))
+
+(defun treadmill-symbol-at-point ()
+  (when (re-search-backward "[^-0\\^-9A-Za-z#_%#@!*|+><./?]\\([-0\\^-9A-Za-z#_%#@!*|+><./?]+\\)")
+    (match-string 1)))
+
+(defun treadmill-complete ()
+  (interactive)
+  (save-excursion
+    (let ((partial-symbol (treadmill-symbol-at-point)))
+      (message "%s" partial-symbol)
+      (treadmill-eval-lowlevel-complete
+       (format "(apropos-re \"^%s\")" partial-symbol)
+       (lambda (str)
+         (let* ((val (read str))
+                (names (car val))
+                (match-list (cadr names))
+                (matching-names (mapcar (lambda (el) (car el)) match-list)))
+                      (message "Apropos found: %s" matching-names)))))))
+
 (defvar treadmill-mode-hook nil)
 
 (defvar treadmill-mode-map
-  (let ((map (make-keymap)))
+  (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET") 'treadmill-eval)
-    (define-key map (kbd "C-c q" 'treadmill-quit))
+    (define-key map (kbd "C-c q") 'treadmill-quit)
+    (define-key map (kbd "M-TAB") 'treadmill-complete)
     map))
 
 (defun treadmill-mode ()
