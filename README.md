@@ -1,6 +1,37 @@
 # Treadmill: Structured Network Interaction with a Gerbil REPL
 
-## Status
+## Installation
+
+Put `treadmill.el` somehwere that Emacs knows about and stick this in your `.emacs.d/init.el`, `.emacs`, etc.:
+
+```
+(require 'treadmill-mode)
+(setq treadmill-interpreter-path "/usr/local/wherever-gerbil-lives")
+```
+
+Additionally, you will need to install the Gerbil side of Treadmill:
+
+`gxpkg install github.com/thunknyc/gerbil-treadmill`
+
+## Usage
+
+`M-x treadmill-spawn`
+
+> Run a local Gerbil interpreter and start up a network REPL. Then,
+  connect to the REPL.
+
+`M-x treadmill-connect`
+
+> Prompt you for a host and a port and will then connect to a network
+  REPL. Presumes that you've somehow gotten a network REPL running
+  inside your program without Treadmill's help.
+
+`M-x treadmill-quit`
+
+> Destroy the current Treadmill interaction buffer, which by the way
+  needs to be the current buffer.
+
+## Notes
 
 It's early days. There are no modes. No major mode for the interaction
 buffer, no minor mode for evaluating Gerbil code from within a source

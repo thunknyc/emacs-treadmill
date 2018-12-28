@@ -10,12 +10,17 @@
 ;; (treadmill-apropos-prefix* gp "call-with-current-")
 ;; (treadmill-clean-up* gp)
 
+(defun treadmill-spawn ()
+  (interactive)
+  (treadmill-start-server))
+
 (require 'subr-x)
 
 (defconst treadmill-interpreter-path "/Users/edw/dev/gerbil/bin/gxi")
 (defconst treadmill-host "127.0.0.1")
 
 (defvar-local treadmill-spawn-port nil)
+(defvar-local treadmill-spawn-process nil)
 (defvar-local treadmill-repl-awaiting-value nil)
 
 (defvar-local treadmill-interaction-buffer nil)
@@ -159,25 +164,40 @@
            (treadmill-issue-prompt)))))))
 
 (defun treadmill-connect (host port)
+  (interactive
+   "sConnect to network REPL at host: \nsREPL port on %s: \n")
   (let* ((repl-b (generate-new-buffer "*treadmill-repl*"))
          (repl-p (open-network-stream "treadmill-repl"
                                       repl-b host port)))
-    (setq treadmill-repl-process repl-p)
+    ;; If treadmill-spawn-process is defined it means we're in the
+    ;; spawn buffer and we should connect the spawn buffer with the
+    ;; repl buffer, so we can tear down the spawn process when we kill
+    ;; the repl.
+    (let ((spawn-process treadmill-spawn-process))
+      (message "connect via spawn")
+      (when spawn-process
+        (setq treadmill-repl-process repl-p)
+        (with-current-buffer repl-b
+          (setq treadmill-spawn-process spawn-process))))
     (message "Repl process is `%s'." repl-p)
     (message "Connected to repl on port %d." port)
     (let ((b (generate-new-buffer "*treadmill*")))
-      (with-current-buffer repl-b (setq treadmill-interaction-buffer b))
-      (set-buffer b)
+      (with-current-buffer repl-b
+        (setq treadmill-interaction-buffer b)
+              (setq treadmill-repl-process repl-p))
+      (switch-to-buffer b)
       (setq treadmill-repl-process repl-p)
-      (display-buffer b)
-      (insert "Welcome to the Gerbil Treadmill\n\n")
-      (treadmill-issue-prompt))))
+      (insert ";; Welcome to the Gerbil Treadmill\n\n")
+      (treadmill-issue-prompt)
+      (treadmill-mode))))
 
 (defun treadmill-start-server ()
   (let* ((b (generate-new-buffer "*treadmill-spawn*"))
          (p (make-process :name "treadmill-spawn" :buffer b :coding 'utf-8
                           :type 'pipe :command (treadmill-command)
                           :filter 'treadmill-spawn-filter)))
+    (with-current-buffer b
+      (setq treadmill-spawn-process p))
     (message "Started `%s' in `%s'" p b)
     p))
 
@@ -257,3 +277,37 @@
    p
    (format "(apropos-re \"^%s\")" prefix)
    (lambda (v) (message "Apropos result: %S" v))))
+
+(defun treadmill-repl-quit ()
+  (let* ((repl-p treadmill-repl-process)
+         (repl-b (current-buffer))
+         (spawn-p (buffer-local-value 'treadmill-spawn-process repl-b))
+         (spawn-b (if spawn-p (process-buffer spawn-p) nil)))
+    (delete-process repl-p)
+    (kill-buffer repl-b)
+    (when spawn-p
+      (delete-process spawn-p)
+      (kill-buffer spawn-b))))
+
+(defun treadmill-quit ()
+  (interactive)
+  (with-current-buffer (process-buffer treadmill-repl-process)
+    (treadmill-repl-quit))
+  (kill-buffer))
+
+(defvar treadmill-mode-hook nil)
+
+(defvar treadmill-mode-map
+  (let ((map (make-keymap)))
+    (define-key map (kbd "RET") 'treadmill-eval)
+    (define-key map (kbd "C-c q" 'treadmill-quit))
+    map))
+
+(defun treadmill-mode ()
+  "Major mode for interacting with Gerbil Scheme"
+  (interactive)
+  (use-local-map treadmill-mode-map)
+  (setq mode-name "Treadmill Interaction")
+  (run-hooks 'treadmill-mode-hook))
+
+(provide 'treadmill-mode)
