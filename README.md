@@ -33,9 +33,10 @@ Additionally, you will need to install the Gerbil side of Treadmill:
 
 ## Notes
 
-It's early days. There are no modes. No major mode for the interaction
-buffer, no minor mode for evaluating Gerbil code from within a source
-file. There's not even an interactive way to spawn a net REPL.
+It's early days. There's no minor mode for evaluating Gerbil code from
+within a source file. I haven't really figured out how to charmingly
+ask for standard input or show standard output. Everything's really
+ugly.
 
 ## Buffers
 
