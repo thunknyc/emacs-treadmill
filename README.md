@@ -1,4 +1,4 @@
-# Treadmill: Structured Network Interaction with a Gerbil REPL
+# Treadmill: Gerbil-Emacs Networked REPL Environment
 
 ## Installation
 
@@ -31,6 +31,10 @@ Additionally, you will need to install the Gerbil side of Treadmill:
 > Destroy the current Treadmill interaction buffer, which by the way
   needs to be the current buffer.
 
+Once you're in the `*treadmill-interaction*` buffer, you can type an
+expression and type return, or you can quit with `C-c q` or you can
+trigger a primitive completion facility with `M-TAB`.
+
 ## Notes
 
 It's early days. There's no minor mode for evaluating Gerbil code from
@@ -42,16 +46,17 @@ ugly.
 
 There are potentially three buffers associated with a Treadmill session:
 
-1. A *treadmill-spawn* buffer, in which gxi is run and a the net REPL
-is launched. If you set up a net REPL inside your app by hand using
-thunknyc/treadmill, you can connect to it via `treadmill-connect`, and
-this buffer won't exist. No user serviceable parts inside.
+1. A `*treadmill-spawn*` buffer, in which gxi is run and a the net
+REPL is launched. If you set up a net REPL inside your app by hand
+using thunknyc/treadmill, you can connect to it via
+`treadmill-connect`, and this buffer won't exist. No user serviceable
+parts inside.
 
-2. A *treadmill-repl* buffer, the buffer for the connection to the
+2. A `*treadmill-repl*` buffer, the buffer for the connection to the
 network REPL, in which Treadmill evaluates code. Again, no user
 serviceable parts inside.
 
-3. A *treadmill-interaction* buffer, the buffer in which human
+3. A `*treadmill-interaction*` buffer, the buffer in which human
 interaction takes place.
 
 ## License
