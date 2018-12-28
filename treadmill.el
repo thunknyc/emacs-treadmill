@@ -200,6 +200,8 @@
       (switch-to-buffer b)
       (setq treadmill-repl-process repl-p)
       (insert ";; Welcome to the Gerbil Treadmill\n")
+      (treadmill-eval-lowlevel-complete
+       "(import :thunknyc/apropos)" (lambda (ignore) 'ignore))
       (treadmill-issue-prompt)
       (treadmill-mode))))
 
