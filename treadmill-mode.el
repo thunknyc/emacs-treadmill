@@ -375,7 +375,6 @@
       (prefix (and (or (eq major-mode 'treadmill-mode)
                        (bound-and-true-p treadmill-gerbil-mode))
                    (let ((sym (company-grab-symbol)))
-                     (message "Considering: %s" sym)
                      (and (> (length sym) 1)
                           sym))))
       (candidates (treadmill-complete arg))
