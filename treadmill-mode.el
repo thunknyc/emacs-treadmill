@@ -25,6 +25,18 @@
   (list treadmill-interpreter-path
         "-e" "(import :thunknyc/treadmill) (start-treadmill!)"))
 
+(defvar-local treadmill-repl-error-level nil)
+
+(defun treadmill-repl-value ()
+  (goto-char (point-max))
+  (when (search-backward-regexp "\r\n\\([0-9]*\\)> " nil t)
+    (let ((prompt (match-string 0))
+          (error-level (match-string 1)))
+      (if (string-empty-p error-level)
+          (setq treadmill-repl-error-level nil)
+        (setq treadmill-repl-error-level (string-to-number error-level)))
+      (buffer-substring 1 (- (point-max) (length prompt))))))
+
 (defun treadmill-lowlevel-completion-filter (proc)
   (let ((proc proc))
     (lambda (p s)
@@ -42,14 +54,11 @@
       (with-current-buffer (process-buffer p)
         (when treadmill-repl-awaiting-value
           (save-excursion
-            (goto-char 0)
-            (when (search-forward-regexp
-                   "^\\(\\(.*\r\n\\)+\\)[0-9]*> $"
-                   nil t)
+            (goto-char (point-max))
+            (when (search-backward-regexp "\r\n[0-9]*> " nil t)
               (setq treadmill-repl-awaiting-value nil)
-              (let ((result (string-trim (match-string 1))))
-                (if (zerop (length result))
-                    (message "No value in completion filter")
+              (let ((result (string-trim (treadmill-repl-value))))
+                (when (not (zerop (length result)))
                   (funcall proc result))))))))))
 
 (defun treadmill-repl-completion-filter (proc)
@@ -68,14 +77,11 @@
     (with-current-buffer (process-buffer p)
       (when treadmill-repl-awaiting-value
         (save-excursion
-          (goto-char 0)
-          (when (search-forward-regexp
-                 "^\\(\\(.*\r\n\\)+\\)[0-9]*> $"
-                 nil t)
+          (goto-char (point-max))
+          (when (search-backward-regexp "\r\n[0-9]*> " nil t)
             (setq treadmill-repl-awaiting-value nil)
-            (let ((result (string-trim (match-string 1))))
-              (if (zerop (length result))
-                  (message "=> No value")
+            (let ((result (string-trim (treadmill-repl-value))))
+              (when (not (zerop (length result)))
                 (funcall proc (read result))))))))))
 
 (defun treadmill-repl-filter (p s)
@@ -296,20 +302,6 @@
                        expr-string input-string)))
         (process-send-string p s)))))
 
-(defun treadmill-eval-lowlevel-complete* (p s completion)
-  (with-current-buffer (treadmill-repl-buffer* p)
-    (erase-buffer)
-    (setq treadmill-repl-awaiting-value t)
-    (set-process-filter (treadmill-repl-process* p)
-                        (treadmill-lowlevel-completion-filter completion))
-    (treadmill-send-string* p s)))
-
-(defun treadmill-apropos-prefix* (p prefix)
-  (treadmill-eval-lowlevel-complete*
-   p
-   (format "(apropos-re \"^%s\")" prefix)
-   (lambda (v) (message "Apropos result: %S" v))))
-
 (defun treadmill-repl-quit ()
   (let* ((repl-p treadmill-repl-process)
          (repl-b (current-buffer))
@@ -362,30 +354,15 @@
     (when (re-search-backward "[^-0\\^-9A-Za-z#_%#@!*|+><./?]\\([-0\\^-9A-Za-z#_%#@!*|+><./?]+\\)$")
       (match-string 1))))
 
-(defvar-local treadmill-complete-cache nil)
-
 (defun treadmill-complete (prefix)
-  (let ((result
-         (treadmill-eval-lowlevel (format "(apropos-re \"^%s\")" prefix))))
-    (let* ((val (read result))
-           (names (car val))
-           (match-list (cadr names))
-           (matching-names (mapcar (lambda (el) (car el)) match-list)))
-      (setq treadmill-complete-cache match-list)
-      (mapcar 'symbol-name matching-names))))
+  (read (treadmill-eval-lowlevel (format "(complete \"^%s\")" prefix))))
 
 (defun treadmill-complete-meta (name)
-  (let ((info (assoc (intern name) treadmill-complete-cache)))
-    (if info
-        (let* ((modules (cadr info))
-               (module-names
-                (mapcar (lambda (el) (symbol-name (car el))) modules))
-               (module-string
-                (string-join
-                 (sort module-names (lambda (a b) (< (length a) (length b))))
-                 " ")))
-          (format "%s exists in: %s" name module-string))
-      (format "%s" name))))
+  (let ((meta (read (treadmill-eval-lowlevel
+                     (format "(completion-meta \"%s\")"
+                             name)))))
+    (if meta (format "%s exists in: %s" name (string-join meta " "))
+      (format "No information for %s" name))))
 
 (defvar treadmill-use-company nil)
 
@@ -398,6 +375,7 @@
       (prefix (and (or (eq major-mode 'treadmill-mode)
                        (bound-and-true-p treadmill-gerbil-mode))
                    (let ((sym (company-grab-symbol)))
+                     (message "Considering: %s" sym)
                      (and (> (length sym) 1)
                           sym))))
       (candidates (treadmill-complete arg))
