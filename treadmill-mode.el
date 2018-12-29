@@ -9,7 +9,7 @@
 (defconst treadmill-interpreter-path "/Users/edw/dev/gerbil/bin/gxi")
 (defconst treadmill-host "127.0.0.1")
 
-(defvar treadmill-current-interaction-bufffer nil)
+(defvar treadmill-current-interaction-buffer nil)
 
 (defvar-local treadmill-spawn-port nil)
 (defvar-local treadmill-spawn-process nil)
@@ -185,7 +185,7 @@
     (message "Repl process is `%s'." repl-p)
     (message "Connected to repl on port %d." port)
     (let ((b (generate-new-buffer "*treadmill*")))
-      (setq treadmill-current-interaction-bufffer (buffer-name b))
+      (setq treadmill-current-interaction-buffer (buffer-name b))
       (with-current-buffer repl-b
         (setq treadmill-interaction-buffer b)
               (setq treadmill-repl-process repl-p))
@@ -256,21 +256,31 @@
                           (treadmill-lowlevel-completion-filter completion))
       (process-send-string p s))))
 
+(defmacro with-treadmill (&rest exprs)
+  (let ((temp-b (make-symbol "buffer")))
+    `(if (bound-and-true-p treadmill-repl-process)
+         (progn ,@exprs)
+       (let ((,temp-b
+              (and treadmill-current-interaction-buffer
+                   (get-buffer treadmill-current-interaction-buffer))))
+         (with-current-buffer ,temp-b ,@exprs)))))
+
 (defvar-local treadmill-eval-waiting nil)
 (defvar-local treadmill-eval-value nil)
 
 (defun treadmill-eval-lowlevel (s)
-  (setq treadmill-eval-waiting t)
-  (let ((b (current-buffer)))
-    (treadmill-eval-lowlevel-complete
-     s
-     (lambda (val)
-       (with-current-buffer b
-         (setq treadmill-eval-value val)
-         (setq treadmill-eval-waiting nil)))))
-  (while treadmill-eval-waiting
-    (sleep-for 0 50))
-  treadmill-eval-value)
+  (with-treadmill
+   (setq treadmill-eval-waiting t)
+     (let ((b (current-buffer)))
+       (treadmill-eval-lowlevel-complete
+        s
+        (lambda (val)
+          (with-current-buffer b
+            (setq treadmill-eval-value val)
+            (setq treadmill-eval-waiting nil)))))
+     (while treadmill-eval-waiting
+       (sleep-for 0 50))
+     treadmill-eval-value))
 
 ;; Needs to be called inside an interaction buffer. Procs ending with
 ;; `*' star need to be passed a spawn process, which sucks, because
@@ -332,19 +342,17 @@
   (setq major-mode 'treadmill-mode)
   (run-hooks 'treadmill-mode-hook))
 
-(defvar-local treadmill-interaction-buffer-name nil)
-
 (defun treadmill-eval-last ()
   (interactive)
-  (let ((ia-b (and treadmill-current-interaction-bufffer
-                   (get-buffer treadmill-current-interaction-bufffer))))
+  (let ((ia-b (and treadmill-current-interaction-buffer
+                   (get-buffer treadmill-current-interaction-buffer))))
     (if ia-b
         (let* ((sexp (elisp--preceding-sexp))
               (str (format "%S" sexp)))
           (message "Evaluating %s" str)
           (with-current-buffer ia-b
             (treadmill-eval-lowlevel-complete
-             str (lambda (val) (message "=> %S" val)))))
+             str (lambda (val) (message "=> %s" val)))))
       (error "Treadmill: No current interaction buffer."))))
 
 (defun treadmill-symbol-at-point ()
@@ -383,7 +391,8 @@
     (interactive (list 'interactive))
     (cl-case command
       (interactive (company-begin-backend 'treadmill-company-backend))
-      (prefix (and (or (eq major-mode 'treadmill-mode))
+      (prefix (and (or (eq major-mode 'treadmill-mode)
+                       (bound-and-true-p treadmill-scheme-mode))
                    (let ((sym (company-grab-symbol)))
                      (and (> (length sym) 1)
                           sym))))
