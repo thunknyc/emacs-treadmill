@@ -1,9 +1,6 @@
 ;; -*- lexical-binding: t -*-
 
-(defun treadmill-spawn ()
-  (interactive)
-  (treadmill-start-server))
-
+(require 'gerbil)
 (require 'subr-x)
 
 (defconst treadmill-interpreter-path "/Users/edw/dev/gerbil/bin/gxi")
@@ -19,6 +16,10 @@
 (defvar-local treadmill-repl-process nil)
 
 (defvar-local treadmill-ia-mark nil)
+
+(defun treadmill-spawn ()
+  (interactive)
+  (treadmill-start-server))
 
 (defun treadmill-command ()
   (list treadmill-interpreter-path
@@ -335,11 +336,12 @@
     map))
 
 (defun treadmill-mode ()
-  "Major mode for interacting with Gerbil Scheme"
+  "Major mode for interacting with Gerbil"
   (interactive)
   (use-local-map treadmill-mode-map)
   (setq mode-name "Treadmill Interaction")
   (setq major-mode 'treadmill-mode)
+  (company-mode-maybe)
   (run-hooks 'treadmill-mode-hook))
 
 (defun treadmill-eval-last ()
@@ -385,6 +387,8 @@
           (format "%s exists in: %s" name module-string))
       (format "%s" name))))
 
+(defvar treadmill-use-company nil)
+
 (when (boundp 'company-mode)
   (require 'cl-lib)
   (defun treadmill-company-backend (command &optional arg &rest ignored)
@@ -392,24 +396,31 @@
     (cl-case command
       (interactive (company-begin-backend 'treadmill-company-backend))
       (prefix (and (or (eq major-mode 'treadmill-mode)
-                       (bound-and-true-p treadmill-scheme-mode))
+                       (bound-and-true-p treadmill-gerbil-mode))
                    (let ((sym (company-grab-symbol)))
                      (and (> (length sym) 1)
                           sym))))
       (candidates (treadmill-complete arg))
       (meta (treadmill-complete-meta arg)))) 
   (add-to-list 'company-backends 'treadmill-company-backend)
-  (add-hook 'treadmill-mode-hook #'company-mode))
+  (add-hook 'treadmill-mode-hook #'company-mode)
+  (setq treadmill-use-company t))
 
-(define-minor-mode treadmill-scheme-mode
-  "Mode for talking to Treadmill in Scheme buffers"
+(defun company-mode-maybe ()
+  (if treadmill-use-company
+      (company-mode)))
+
+(define-minor-mode treadmill-gerbil-mode
+  "Mode for talking to Treadmill in Gerbil buffers"
   :lighter " TM"
   :keymap (let ((map (make-sparse-keymap)))
             (define-key map (kbd "C-x C-e") 'treadmill-eval-last)
-            map))
+            map)
+  (company-mode-maybe))
 
 ;;###autoload
-(add-hook 'scheme-mode-hook 'treadmill-scheme-mode)
+(add-hook 'gerbil-mode-hook 'treadmill-gerbil-mode)
+;;###autoload
 
 (provide 'treadmill-mode)
-(provide 'treadmill-scheme-mode)
+(provide 'treadmill-gerbil-mode)
