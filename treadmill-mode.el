@@ -379,7 +379,7 @@
                      (and (> (length sym) 1)
                           sym))))
       (candidates (treadmill-complete arg))
-      (meta (treadmill-complete-meta arg)))) 
+      (meta (treadmill-complete-meta arg))))
   (add-to-list 'company-backends 'treadmill-company-backend)
   (add-hook 'treadmill-mode-hook #'company-mode)
   (setq treadmill-use-company t))
