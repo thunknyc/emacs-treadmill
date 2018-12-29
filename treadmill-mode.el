@@ -1,15 +1,5 @@
 ;; -*- lexical-binding: t -*-
 
-;; (setq gp (treadmill-start-server))
-;; (treadmill-eval-lowlevel* gp "(import :thunknyc/treadmill)")
-;; (treadmill-eval-lowlevel* gp "(import :thunknyc/apropos)")
-;; (treadmill-eval-lowlevel* gp "(+ 1 1)")
-;; (treadmill-eval* gp "(read)" "(+ 1 1)")
-;; (treadmill-eval* gp "(string-append \"foo\" \"bar\")" "")
-;; (treadmill-eval* gp "(apropos-re \"^disp\")" "")
-;; (treadmill-apropos-prefix* gp "call-with-current-")
-;; (treadmill-clean-up* gp)
-
 (defun treadmill-spawn ()
   (interactive)
   (treadmill-start-server))
@@ -19,6 +9,8 @@
 (defconst treadmill-interpreter-path "/Users/edw/dev/gerbil/bin/gxi")
 (defconst treadmill-host "127.0.0.1")
 
+(defvar treadmill-current-interaction-bufffer nil)
+
 (defvar-local treadmill-spawn-port nil)
 (defvar-local treadmill-spawn-process nil)
 (defvar-local treadmill-repl-awaiting-value nil)
@@ -27,7 +19,6 @@
 (defvar-local treadmill-repl-process nil)
 
 (defvar-local treadmill-ia-mark nil)
-
 
 (defun treadmill-command ()
   (list treadmill-interpreter-path
@@ -194,6 +185,7 @@
     (message "Repl process is `%s'." repl-p)
     (message "Connected to repl on port %d." port)
     (let ((b (generate-new-buffer "*treadmill*")))
+      (setq treadmill-current-interaction-bufffer (buffer-name b))
       (with-current-buffer repl-b
         (setq treadmill-interaction-buffer b)
               (setq treadmill-repl-process repl-p))
@@ -264,15 +256,21 @@
                           (treadmill-lowlevel-completion-filter completion))
       (process-send-string p s))))
 
-(defun treadmill-eval-complete* (p expr-string input-string completion)
-  (with-current-buffer (treadmill-repl-buffer* p)
-    (erase-buffer)
-    (setq treadmill-repl-awaiting-value t)
-    (set-process-filter (treadmill-repl-process* p)
-                        (treadmill-completion-filter completion))
-    (let ((s (format "(eval-string/input-string %S %S)"
-                     expr-string input-string)))
-      (treadmill-send-string* p s))))
+(defvar-local treadmill-eval-waiting nil)
+(defvar-local treadmill-eval-value nil)
+
+(defun treadmill-eval-lowlevel (s)
+  (setq treadmill-eval-waiting t)
+  (let ((b (current-buffer)))
+    (treadmill-eval-lowlevel-complete
+     s
+     (lambda (val)
+       (with-current-buffer b
+         (setq treadmill-eval-value val)
+         (setq treadmill-eval-waiting nil)))))
+  (while treadmill-eval-waiting
+    (sleep-for 0 50))
+  treadmill-eval-value)
 
 ;; Needs to be called inside an interaction buffer. Procs ending with
 ;; `*' star need to be passed a spawn process, which sucks, because
@@ -318,35 +316,12 @@
     (treadmill-repl-quit))
   (kill-buffer))
 
-(defun treadmill-symbol-at-point ()
-  (when (re-search-backward "")
-    (match-string 0)))
-
-(defun treadmill-symbol-at-point ()
-  (when (re-search-backward "[^-0\\^-9A-Za-z#_%#@!*|+><./?]\\([-0\\^-9A-Za-z#_%#@!*|+><./?]+\\)")
-    (match-string 1)))
-
-(defun treadmill-complete ()
-  (interactive)
-  (save-excursion
-    (let ((partial-symbol (treadmill-symbol-at-point)))
-      (message "%s" partial-symbol)
-      (treadmill-eval-lowlevel-complete
-       (format "(apropos-re \"^%s\")" partial-symbol)
-       (lambda (str)
-         (let* ((val (read str))
-                (names (car val))
-                (match-list (cadr names))
-                (matching-names (mapcar (lambda (el) (car el)) match-list)))
-                      (message "Apropos found: %s" matching-names)))))))
-
 (defvar treadmill-mode-hook nil)
 
 (defvar treadmill-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET") 'treadmill-eval)
     (define-key map (kbd "C-c q") 'treadmill-quit)
-    (define-key map (kbd "M-TAB") 'treadmill-complete)
     map))
 
 (defun treadmill-mode ()
@@ -354,6 +329,79 @@
   (interactive)
   (use-local-map treadmill-mode-map)
   (setq mode-name "Treadmill Interaction")
+  (setq major-mode 'treadmill-mode)
   (run-hooks 'treadmill-mode-hook))
 
+(defvar-local treadmill-interaction-buffer-name nil)
+
+(defun treadmill-eval-last ()
+  (interactive)
+  (let ((ia-b (and treadmill-current-interaction-bufffer
+                   (get-buffer treadmill-current-interaction-bufffer))))
+    (if ia-b
+        (let* ((sexp (elisp--preceding-sexp))
+              (str (format "%S" sexp)))
+          (message "Evaluating %s" str)
+          (with-current-buffer ia-b
+            (treadmill-eval-lowlevel-complete
+             str (lambda (val) (message "=> %S" val)))))
+      (error "Treadmill: No current interaction buffer."))))
+
+(defun treadmill-symbol-at-point ()
+  (save-excursion
+    (when (re-search-backward "[^-0\\^-9A-Za-z#_%#@!*|+><./?]\\([-0\\^-9A-Za-z#_%#@!*|+><./?]+\\)$")
+      (match-string 1))))
+
+(defvar-local treadmill-complete-cache nil)
+
+(defun treadmill-complete (prefix)
+  (let ((result
+         (treadmill-eval-lowlevel (format "(apropos-re \"^%s\")" prefix))))
+    (let* ((val (read result))
+           (names (car val))
+           (match-list (cadr names))
+           (matching-names (mapcar (lambda (el) (car el)) match-list)))
+      (setq treadmill-complete-cache match-list)
+      (mapcar 'symbol-name matching-names))))
+
+(defun treadmill-complete-meta (name)
+  (let ((info (assoc (intern name) treadmill-complete-cache)))
+    (if info
+        (let* ((modules (cadr info))
+               (module-names
+                (mapcar (lambda (el) (symbol-name (car el))) modules))
+               (module-string
+                (string-join
+                 (sort module-names (lambda (a b) (< (length a) (length b))))
+                 " ")))
+          (format "%s exists in: %s" name module-string))
+      (format "%s" name))))
+
+(require 'cl-lib)
+(require 'company)
+
+(defun treadmill-company-backend (command &optional arg &rest ignored)
+  (interactive (list 'interactive))
+  (cl-case command
+    (interactive (company-begin-backend 'treadmill-company-backend))
+    (prefix (and (or (eq major-mode 'treadmill-mode))
+                 (let ((sym (company-grab-symbol)))
+                   (and (> (length sym) 1)
+                        sym))))
+    (candidates (treadmill-complete arg))
+    (meta (treadmill-complete-meta arg))))
+
+(add-to-list 'company-backends 'treadmill-company-backend)
+
+(define-minor-mode treadmill-scheme-mode
+  "Mode for talking to Treadmill in Scheme buffers"
+  :lighter " TM"
+  :keymap (let ((map (make-sparse-keymap)))
+            (define-key map (kbd "C-x C-e") 'treadmill-eval-last)
+            map))
+
+;;###autoload
+(add-hook 'scheme-mode-hook 'treadmill-scheme-mode)
+
 (provide 'treadmill-mode)
+(provide 'treadmill-scheme-mode)
