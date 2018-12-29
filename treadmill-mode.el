@@ -361,7 +361,7 @@
   (let ((meta (read (treadmill-eval-lowlevel
                      (format "(completion-meta \"%s\")"
                              name)))))
-    (if meta (format "%s exists in: %s" name (string-join meta " "))
+    (if meta (format "Modules: %s" (string-join meta " "))
       (format "No information for %s" name))))
 
 (defvar treadmill-use-company nil)
