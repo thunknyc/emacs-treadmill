@@ -261,7 +261,7 @@
       (setq treadmill-repl-awaiting-value t)
       (set-process-filter (treadmill-repl-process* p)
                           (treadmill-lowlevel-completion-filter completion))
-      (process-send-string p s))))
+      (process-send-string p (format "%s\n" s)))))
 
 (defmacro with-treadmill (&rest exprs)
   (let ((temp-b (make-symbol "buffer")))
@@ -298,7 +298,7 @@
       (erase-buffer)
       (setq treadmill-repl-awaiting-value t)
       (set-process-filter p (treadmill-repl-completion-filter completion))
-      (let ((s (format "(eval-string/input-string %S %S)"
+      (let ((s (format "(eval-string/input-string %S %S)\n"
                        expr-string input-string)))
         (process-send-string p s)))))
 
