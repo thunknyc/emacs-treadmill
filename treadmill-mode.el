@@ -377,21 +377,20 @@
           (format "%s exists in: %s" name module-string))
       (format "%s" name))))
 
-(require 'cl-lib)
-(require 'company)
-
-(defun treadmill-company-backend (command &optional arg &rest ignored)
-  (interactive (list 'interactive))
-  (cl-case command
-    (interactive (company-begin-backend 'treadmill-company-backend))
-    (prefix (and (or (eq major-mode 'treadmill-mode))
-                 (let ((sym (company-grab-symbol)))
-                   (and (> (length sym) 1)
-                        sym))))
-    (candidates (treadmill-complete arg))
-    (meta (treadmill-complete-meta arg))))
-
-(add-to-list 'company-backends 'treadmill-company-backend)
+(when (boundp 'company-mode)
+  (require 'cl-lib)
+  (defun treadmill-company-backend (command &optional arg &rest ignored)
+    (interactive (list 'interactive))
+    (cl-case command
+      (interactive (company-begin-backend 'treadmill-company-backend))
+      (prefix (and (or (eq major-mode 'treadmill-mode))
+                   (let ((sym (company-grab-symbol)))
+                     (and (> (length sym) 1)
+                          sym))))
+      (candidates (treadmill-complete arg))
+      (meta (treadmill-complete-meta arg)))) 
+  (add-to-list 'company-backends 'treadmill-company-backend)
+  (add-hook 'treadmill-mode-hook #'company-mode))
 
 (define-minor-mode treadmill-scheme-mode
   "Mode for talking to Treadmill in Scheme buffers"

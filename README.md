@@ -5,11 +5,14 @@
 Put `treadmill.el` somehwere that Emacs knows about and stick this in your `.emacs.d/init.el`, `.emacs`, etc.:
 
 ```
+(require 'company)
 (require 'treadmill-mode)
 (setq treadmill-interpreter-path "/usr/local/wherever-gerbil-lives")
 ```
 
-Additionally, you will need to install the Gerbil side of Treadmill:
+You can remove `(require 'company)` if you don't want autocompletion
+support.  Additionally, you will need to install the Gerbil side of
+Treadmill:
 
 `gxpkg install github.com/thunknyc/gerbil-treadmill`
 
