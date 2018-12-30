@@ -46,7 +46,7 @@
         (t (let* ((fname (buffer-file-name))
                   (module-leaf (file-name-sans-extension
                                 (file-name-nondirectory fname)))
-                  (fdir (file-name-directory fname)))
+                  (fdir (substring (file-name-directory fname) 0 -1)))
              (if-let ((module (treadmill-build-module-name
                                (list module-leaf) fdir)))
                  (progn (setq treadmill-current-module module)
