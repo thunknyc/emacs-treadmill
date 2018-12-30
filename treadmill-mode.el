@@ -146,10 +146,18 @@
     (insert what)
     (setq inhibit-read-only saved-inhibit-read-only)))
 
+(defvar-local treadmill-current-module nil)
+
+(defun treadmill-ia-enter-module (module)
+  (interactive "sEnter module: (\"\" for TOP): ")
+  (setq treadmill-current-module (if (> (length module) 0) module nil))
+  ;; BUG: We're just leaving behind any user input at this point.
+  (treadmill-issue-prompt))
+
 (defun treadmill-issue-prompt ()
   (interactive)
   (goto-char (point-max))
-  (treadmill-insert "> ")
+  (treadmill-insert (format "%s> " (or treadmill-current-module "TOP")))
   (setq treadmill-ia-mark (point-max-marker))
   (treadmill-secure-history))
 
@@ -159,10 +167,11 @@
         (stdin "")
         (b (current-buffer)))
     (goto-char (point-max))
-    (treadmill-insert (format-message "\nEvaluating `%s' with STDIN `%s'\n"
-                                      s stdin))
-    (treadmill-eval-complete
-     s stdin
+    (treadmill-insert
+     (format-message "\nEvaluating `%s' in module `%s' with STDIN `%s'\n"
+                     s treadmill-current-module stdin))
+    (treadmill-eval/io-async
+     s stdin treadmill-current-module
      (lambda (val)
        (let ((results (car val))
              (stdout (cadr val))
@@ -252,17 +261,23 @@
        (sleep-for 0 50))
      treadmill-eval-value))
 
+(defun treadmill-module-string (mod)
+  (if mod
+      (format "'%s" mod)
+      "#f"))
+
 ;; Needs to be called inside an interaction buffer. Procs ending with
 ;; `*' star need to be passed a spawn process, which sucks, because
 ;; spawning is not necessary.
-(defun treadmill-eval-complete (expr-string input-string completion)
+(defun treadmill-eval/io-async (expr-string input-string module completion)
   (let ((p treadmill-repl-process))
     (with-current-buffer (process-buffer p)
       (erase-buffer)
       (setq treadmill-repl-awaiting-value t)
       (set-process-filter p (treadmill-repl-completion-filter completion))
-      (let ((s (format "(eval-string/input-string %S %S)\n"
-                       expr-string input-string)))
+      (let ((s (format "(eval-string/input-string %S %S %s)\n"
+                       expr-string input-string
+                       (treadmill-module-string module))))
         (process-send-string p s)))))
 
 (defun treadmill-repl-quit ()
@@ -337,6 +352,7 @@
 (defvar treadmill-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET") 'treadmill-ia-eval)
+    (define-key map (kbd "C-c m") 'treadmill-ia-enter-module)
     (define-key map (kbd "C-c q") 'treadmill-ia-quit)
     map))
 
