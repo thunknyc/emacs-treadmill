@@ -74,8 +74,8 @@ parts inside.
 network REPL, in which Treadmill evaluates code. Again, no user
 serviceable parts inside.
 
-3. A `*treadmill-interaction*` buffer, the buffer in which human
-interaction takes place.
+3. A `*treadmill*` buffer, the buffer in which human interaction takes
+place.
 
 ## License
 
