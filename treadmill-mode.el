@@ -183,8 +183,7 @@
              (format "\nError output:\n```\n%s\n```" stderr))))
       (let ((output-string (format "%s%s%s" values-str stdout-str stderr-str)))
         (if (string-empty-p output-string) ""
-          (format "%s\n" output-string))
- ))))
+          (format "%s\n" output-string))))))
 
 (defun treadmill-ia-eval ()
   (interactive)
