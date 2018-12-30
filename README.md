@@ -34,9 +34,24 @@ Treadmill:
 > Destroy the current Treadmill interaction buffer, which by the way
   needs to be the current buffer.
 
-Once you're in the `*treadmill-interaction*` buffer, you can type an
-expression and type return, or you can quit with `C-c q` or you can
-trigger a primitive completion facility with `M-TAB`.
+Once you're in the `*treadmill*` buffer, you can type expressions and
+evaluate them in the current module.
+
+## Key bindings
+
+### Interactive buffer
+
+| Binding | Procedure | Description |
+| --- | --- | --- |
+| `RET` | `treadmill-ia-eval` | Evaluate expression entered at prompt. |
+| ` C-c q` | `treadmill-ia-quit` | Close interactive session and associated processes and buffers. |
+| `C-c m` | `treadmill-ia-enter-module` | Prompt for a module name in which to evaluate entered expressions. |
+
+### Gerbil buffers
+
+| Binding | Procedure | Description |
+| --- | --- | --- |
+| `C-c C-e` | `treadmill-gerbil-eval-last` | Evaluate last sexp in current Treadmill interaction buffer. |
 
 ## Notes
 
