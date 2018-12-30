@@ -146,6 +146,13 @@
     (insert what)
     (setq inhibit-read-only saved-inhibit-read-only)))
 
+(defun treadmill-issue-prompt ()
+  (interactive)
+  (goto-char (point-max))
+  (treadmill-insert (format "%s> " (or treadmill-current-module "TOP")))
+  (setq treadmill-ia-mark (point-max-marker))
+  (treadmill-secure-history))
+
 (defvar-local treadmill-current-module nil)
 
 (defun treadmill-normalize-module-string (module)
@@ -162,12 +169,22 @@
     (treadmill-issue-prompt)
     (insert unsent-input)))
 
-(defun treadmill-issue-prompt ()
-  (interactive)
-  (goto-char (point-max))
-  (treadmill-insert (format "%s> " (or treadmill-current-module "TOP")))
-  (setq treadmill-ia-mark (point-max-marker))
-  (treadmill-secure-history))
+(defun treadmill-format-result (result)
+  (let ((values (car result))
+        (stdout (cadr result))
+        (stderr (caddr result)))
+    (let ((values-str
+           (if (null values) "" (format "%s" values)))
+         (stdout-str
+           (if (string-empty-p stdout) ""
+             (format "\nOutput:\n```\n%s\n```" stdout)))
+          (stderr-str
+           (if (string-empty-p stderr) ""
+             (format "\nError output:\n```\n%s\n```" stderr))))
+      (let ((output-string (format "%s%s%s" values-str stdout-str stderr-str)))
+        (if (string-empty-p output-string) ""
+          (format "%s\n" output-string))
+ ))))
 
 (defun treadmill-ia-eval ()
   (interactive)
@@ -175,20 +192,14 @@
         (stdin "")
         (b (current-buffer)))
     (goto-char (point-max))
-    (treadmill-insert
-     (format-message "\nEvaluating `%s' in module `%s' with STDIN `%s'\n"
-                     s treadmill-current-module stdin))
+    (treadmill-insert "\n")
     (treadmill-eval/io-async
      s stdin treadmill-current-module
-     (lambda (val)
-       (let ((results (car val))
-             (stdout (cadr val))
-             (stderr (caddr val)))
-         (with-current-buffer b
-           (goto-char (point-max))
-           (treadmill-insert (format-message "=> %s\nSTDOUT:%s\nSTDERR:%s\n"
-                                             results stdout stderr))
-           (treadmill-issue-prompt)))))))
+     (lambda (result)
+       (with-current-buffer b
+         (goto-char (point-max))
+         (treadmill-insert (treadmill-format-result result))
+         (treadmill-issue-prompt))))))
 
 (defun treadmill-connect (host port)
   (interactive
