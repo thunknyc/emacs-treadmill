@@ -208,8 +208,9 @@
          nil)
         (t
          (goto-char (+ (point) 11))
-         (search-forward ";;;;;;;;;;\n" nil t)
-         (goto-char (match-beginning 0)))))
+         (if (search-forward ";;;;;;;;;;\n" nil t)
+             (goto-char (match-beginning 0))
+           (goto-char (point-max))))))
 
 (defun treadmill-history-next ()
   (with-current-buffer treadmill-history-buffer
