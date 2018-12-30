@@ -148,11 +148,19 @@
 
 (defvar-local treadmill-current-module nil)
 
+(defun treadmill-normalize-module-string (module)
+  (cond ((equal module "TOP") nil)
+        ((> (length module) 0) module)
+        (nil)))
+
 (defun treadmill-ia-enter-module (module)
   (interactive "sEnter module: (\"\" for TOP): ")
-  (setq treadmill-current-module (if (> (length module) 0) module nil))
-  ;; BUG: We're just leaving behind any user input at this point.
-  (treadmill-issue-prompt))
+  (setq treadmill-current-module (treadmill-normalize-module-string module))
+  (let ((unsent-input (buffer-substring treadmill-ia-mark (point-max))))
+    (goto-char (point-max))
+    (insert "\n")
+    (treadmill-issue-prompt)
+    (insert unsent-input)))
 
 (defun treadmill-issue-prompt ()
   (interactive)
