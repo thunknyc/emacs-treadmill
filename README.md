@@ -7,7 +7,6 @@ Put `treadmill.el` somehwere that Emacs knows about and stick this in your `.ema
 ```
 (require 'company)
 (require 'treadmill-mode)
-(setq treadmill-interpreter-path "/usr/local/wherever-gerbil-lives")
 ```
 
 You can remove `(require 'company)` if you don't want autocompletion
@@ -15,6 +14,10 @@ support.  Additionally, you will need to install the Gerbil side of
 Treadmill:
 
 `gxpkg install github.com/thunknyc/gerbil-treadmill`
+
+Treadmill finds `gxi`, the Gerbil interpreter, using the `GERBIL_HOME`
+environment variable. You can override this behavior by setting
+`treadmill-interpreter-name`.
 
 ## Usage
 

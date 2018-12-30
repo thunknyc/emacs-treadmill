@@ -3,8 +3,8 @@
 (require 'gerbil)
 (require 'subr-x)
 
-(defconst treadmill-interpreter-path "/Users/edw/dev/gerbil/bin/gxi")
-(defconst treadmill-host "127.0.0.1")
+(defvar treadmill-interpreter-name nil)
+(defconst treadmill-default-host "127.0.0.1")
 
 (defvar treadmill-current-interaction-buffer nil)
 
@@ -17,12 +17,21 @@
 
 (defvar-local treadmill-ia-mark nil)
 
+(defun treadmill-gxi-location ()
+  (let ((gerbil-home (getenv "GERBIL_HOME")))
+    (cond ((and (bound-and-true-p treadmill-interpreter-name)
+                (not (string-empty-p treadmill-interpreter-name)))
+           treadmill-interpreter-path)
+          (gerbil-home
+           (format "%s/bin/gxi" gerbil-home))
+          (t nil))))
+
 (defun treadmill-spawn ()
   (interactive)
   (treadmill-start-server))
 
 (defun treadmill-command ()
-  (list treadmill-interpreter-path
+  (list (treadmill-gxi-location)
         "-e" "(import :thunknyc/treadmill) (start-treadmill!)"))
 
 (defvar-local treadmill-repl-error-level nil)
@@ -131,7 +140,7 @@
           (let ((port (string-to-number (match-string 1))))
             (setq treadmill-spawn-port port)
             (message "Net repl starting on port %d." port)
-            (treadmill-connect treadmill-host port)))))))
+            (treadmill-connect "127.0.0.1" port)))))))
 
 (defun treadmill-secure-transcript ()
   (let ((saved-inhibit-read-only inhibit-read-only))
