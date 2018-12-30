@@ -238,7 +238,7 @@
 (defvar-local treadmill-eval-waiting nil)
 (defvar-local treadmill-eval-value nil)
 
-(defun treadmill-eval-lowlevel (s)
+(defun treadmill-eval1 (s)
   (with-treadmill
    (setq treadmill-eval-waiting t)
      (let ((b (current-buffer)))
@@ -318,12 +318,11 @@
       (match-string 1))))
 
 (defun treadmill-complete (prefix)
-  (read (treadmill-eval-lowlevel (format "(complete \"^%s\")" prefix))))
+  (read (treadmill-eval1 (format "(complete \"^%s\")" prefix))))
 
 (defun treadmill-complete-meta (name)
-  (let ((meta (read (treadmill-eval-lowlevel
-                     (format "(completion-meta \"%s\")"
-                             name)))))
+  (let ((meta
+         (read (treadmill-eval1 (format "(completion-meta \"%s\")" name)))))
     (if meta (format "Modules: %s" (string-join meta " "))
       (format "No information for %s" name))))
 
