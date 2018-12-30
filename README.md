@@ -51,7 +51,8 @@ evaluate them in the current module.
 
 | Binding | Procedure | Description |
 | --- | --- | --- |
-| `C-c C-e` | `treadmill-gerbil-eval-last` | Evaluate last sexp in current Treadmill interaction buffer. |
+| `C-c C-e` | `treadmill-gerbil-eval-last` | Evaluate last sexp in current Treadmill interaction buffer session using this buffer's current module. |
+| `C-c m` | `treadmill-gerbil-enter-module` | Prompt for a module name in which to evaluate current buffer. |
 
 ## Notes
 
