@@ -1,5 +1,7 @@
 # Treadmill: Gerbil-Emacs Networked REPL Environment
 
+![Gerbil Screenshot](/doc/screenshot.png?raw=true "Gerbil in action, 30-DEC-2018")
+
 ## Installation
 
 Put `treadmill.el` somehwere that Emacs knows about and stick this in your `.emacs.d/init.el`, `.emacs`, etc.:
