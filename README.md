@@ -56,10 +56,7 @@ evaluate them in the current module.
 
 ## Notes
 
-It's early days. There's no minor mode for evaluating Gerbil code from
-within a source file. I haven't really figured out how to charmingly
-ask for standard input or show standard output. Everything's really
-ugly.
+It's early days.
 
 ## Buffers
 
