@@ -17,6 +17,42 @@
 
 (defvar-local treadmill-ia-mark nil)
 
+(defun treadmill-find-pkg (dir)
+  (let ((pkg-file (format "%s/gerbil.pkg" dir)))
+    (when (file-readable-p pkg-file)
+        (let ((b (generate-new-buffer "*treadmill-find-pkg*")))
+          (with-current-buffer b
+            (insert-file-contents pkg-file)
+            (let* ((txt (buffer-substring (point-min) (point-max)))
+                   (alist (read (format "(%s)" txt))))
+              (kill-buffer)
+              (symbol-name (car (alist-get 'package: alist)))))))))
+
+(defun treadmill-build-module-name (els fdir)
+  (if (string-empty-p fdir) nil
+    (if-let ((pkg (treadmill-find-pkg fdir)))
+        (string-join (cons pkg els) "/")
+        (let ((el (file-name-nondirectory fdir)))
+          (treadmill-build-module-name
+           (cons el els)
+           (substring (file-name-directory fdir) 0 -1))))))
+
+(defun treadmill-gerbil-current-module ()
+  (interactive)
+  (cond ((bound-and-true-p treadmill-current-module)
+         treadmill-current-module)
+        ((not (buffer-file-name))
+         (warn "No module name for Gerbil unsaved buffer."))
+        (t (let* ((fname (buffer-file-name))
+                  (module-leaf (file-name-sans-extension
+                                (file-name-nondirectory fname)))
+                  (fdir (file-name-directory fname)))
+             (if-let ((module (treadmill-build-module-name
+                               (list module-leaf) fdir)))
+                 (progn (setq treadmill-current-module module)
+                        module)
+               (warn "No package file name for Gerbil source."))))))
+
 (defun treadmill-gxi-location ()
   (let ((gerbil-home (getenv "GERBIL_HOME")))
     (cond ((and (bound-and-true-p treadmill-interpreter-name)
@@ -413,7 +449,7 @@
     (if ia-b
         (let* ((sexp (elisp--preceding-sexp))
                (str (format "%S" sexp))
-               (module treadmill-current-module))
+               (module (treadmill-gerbil-current-module)))
           (with-current-buffer ia-b
             (treadmill-eval/io-async
              str "" module
