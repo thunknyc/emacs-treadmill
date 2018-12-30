@@ -199,7 +199,7 @@
       (switch-to-buffer b)
       (setq treadmill-repl-process repl-p)
       (insert ";; Welcome to the Gerbil Treadmill\n")
-      (treadmill-eval-lowlevel-complete
+      (treadmill-eval1-async
        "(import :thunknyc/apropos)" (lambda (ignore) 'ignore))
       (treadmill-issue-prompt)
       (treadmill-mode))))
@@ -214,53 +214,16 @@
     (message "Started `%s' in `%s'" p b)
     p))
 
-(defun treadmill-clean-up* (p)
-  (let* ((repl-p (treadmill-repl-process* p))
-         (repl-b (process-buffer repl-p))
-         (ia-b (buffer-local-value 'treadmill-interaction-buffer repl-b))
-         (n (process-name p))
-         (b (process-buffer p)))
-    (kill-buffer ia-b)
-    (delete-process repl-p)
-    (kill-buffer repl-b)
-    (delete-process p)
-    (kill-buffer b)
-    (message "Deleted process `%s' and associated buffers." n)))
-
 (defun treadmill-repl-process* (p)
   (buffer-local-value 'treadmill-repl-process (process-buffer p)))
 
-(defun treadmill-repl-buffer* (p)
-  (process-buffer (treadmill-repl-process* p)))
-
-(defun treadmill-send-string* (p s)
-  (process-send-string (treadmill-repl-process* p) s))
-
-(defun treadmill-eval-lowlevel* (p s)
-  (with-current-buffer (treadmill-repl-buffer* p)
-    (erase-buffer)
-    (setq treadmill-repl-awaiting-value t)
-    (set-process-filter (treadmill-repl-process* p)
-                        'treadmill-repl-filter-lowlevel)
-    (treadmill-send-string* p s)))
-
-(defun treadmill-eval* (p expr-string input-string)
-  (with-current-buffer (treadmill-repl-buffer* p)
-    (erase-buffer)
-    (setq treadmill-repl-awaiting-value t)
-    (set-process-filter (treadmill-repl-process* p)
-                        'treadmill-repl-filter)
-    (let ((s (format "(eval-string/input-string %S %S)"
-                     expr-string input-string)))
-      (treadmill-send-string* p s))))
-
-(defun treadmill-eval-lowlevel-complete (s completion)
+(defun treadmill-eval1-async (s completion)
   (let ((p treadmill-repl-process))
     (with-current-buffer (process-buffer p)
       (erase-buffer)
       (setq treadmill-repl-awaiting-value t)
-      (set-process-filter (treadmill-repl-process* p)
-                          (treadmill-lowlevel-completion-filter completion))
+      (set-process-filter
+       p (treadmill-lowlevel-completion-filter completion))
       (process-send-string p (format "%s\n" s)))))
 
 (defmacro with-treadmill (&rest exprs)
@@ -279,7 +242,7 @@
   (with-treadmill
    (setq treadmill-eval-waiting t)
      (let ((b (current-buffer)))
-       (treadmill-eval-lowlevel-complete
+       (treadmill-eval1-async
         s
         (lambda (val)
           (with-current-buffer b
@@ -345,7 +308,7 @@
               (str (format "%S" sexp)))
           (message "Evaluating %s" str)
           (with-current-buffer ia-b
-            (treadmill-eval-lowlevel-complete
+            (treadmill-eval1-async
              str (lambda (val) (message "=> %s" val)))))
       (error "Treadmill: No current interaction buffer."))))
 
