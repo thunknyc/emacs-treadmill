@@ -160,6 +160,10 @@
         ((> (length module) 0) module)
         (nil)))
 
+(defun treadmill-gerbil-enter-module (module)
+  (interactive "sEnter module: (\"\" for TOP): ")
+  (setq treadmill-current-module (treadmill-normalize-module-string module)))
+
 (defun treadmill-ia-enter-module (module)
   (interactive "sEnter module: (\"\" for TOP): ")
   (setq treadmill-current-module (treadmill-normalize-module-string module))
@@ -392,17 +396,22 @@
     (treadmill-repl-quit))
   (kill-buffer))
 
-(defun treadmill-gerbil-eval-last ()
-  (interactive)
-  (let ((ia-b (and treadmill-current-interaction-buffer
+(defun treadmill-gerbil-eval-last (arg)
+  (interactive "P")
+  (let ((g-b (current-buffer))
+        (ia-b (and treadmill-current-interaction-buffer
                    (get-buffer treadmill-current-interaction-buffer))))
     (if ia-b
         (let* ((sexp (elisp--preceding-sexp))
-              (str (format "%S" sexp)))
-          (message "Evaluating %s" str)
+               (str (format "%S" sexp))
+               (module treadmill-current-module))
           (with-current-buffer ia-b
-            (treadmill-eval1-async
-             str (lambda (val) (message "=> %s" val)))))
+            (treadmill-eval/io-async
+             str "" module
+             (lambda (val)
+               (if arg
+                   (with-current-buffer g-b (insert (format "%s" (car val))))
+                   (message "=> %s" (car val)))))))
       (error "Treadmill: No current interaction buffer."))))
 
 (defun treadmill-symbol-at-point ()
@@ -477,6 +486,7 @@
   :lighter " TM"
   :keymap (let ((map (make-sparse-keymap)))
             (define-key map (kbd "C-x C-e") 'treadmill-gerbil-eval-last)
+            (define-key map (kbd "C-c m") 'treadmill-gerbil-enter-module)
             map)
   (company-mode-maybe))
 
