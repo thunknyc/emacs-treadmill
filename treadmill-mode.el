@@ -153,7 +153,7 @@
   (setq treadmill-ia-mark (point-max-marker))
   (treadmill-secure-history))
 
-(defun treadmill-eval ()
+(defun treadmill-ia-eval ()
   (interactive)
   (let ((s (buffer-substring treadmill-ia-mark (point-max)))
         (stdin "")
@@ -276,30 +276,13 @@
       (delete-process spawn-p)
       (kill-buffer spawn-b))))
 
-(defun treadmill-quit ()
+(defun treadmill-ia-quit ()
   (interactive)
   (with-current-buffer (process-buffer treadmill-repl-process)
     (treadmill-repl-quit))
   (kill-buffer))
 
-(defvar treadmill-mode-hook nil)
-
-(defvar treadmill-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "RET") 'treadmill-eval)
-    (define-key map (kbd "C-c q") 'treadmill-quit)
-    map))
-
-(defun treadmill-mode ()
-  "Major mode for interacting with Gerbil"
-  (interactive)
-  (use-local-map treadmill-mode-map)
-  (setq mode-name "Treadmill Interaction")
-  (setq major-mode 'treadmill-mode)
-  (company-mode-maybe)
-  (run-hooks 'treadmill-mode-hook))
-
-(defun treadmill-eval-last ()
+(defun treadmill-gerbil-eval-last ()
   (interactive)
   (let ((ia-b (and treadmill-current-interaction-buffer
                    (get-buffer treadmill-current-interaction-buffer))))
@@ -349,11 +332,28 @@
   (if treadmill-use-company
       (company-mode)))
 
+(defvar treadmill-mode-hook nil)
+
+(defvar treadmill-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") 'treadmill-ia-eval)
+    (define-key map (kbd "C-c q") 'treadmill-ia-quit)
+    map))
+
+(defun treadmill-mode ()
+  "Major mode for interacting with Gerbil"
+  (interactive)
+  (use-local-map treadmill-mode-map)
+  (setq mode-name "Treadmill Interaction")
+  (setq major-mode 'treadmill-mode)
+  (company-mode-maybe)
+  (run-hooks 'treadmill-mode-hook))
+
 (define-minor-mode treadmill-gerbil-mode
   "Mode for talking to Treadmill in Gerbil buffers"
   :lighter " TM"
   :keymap (let ((map (make-sparse-keymap)))
-            (define-key map (kbd "C-x C-e") 'treadmill-eval-last)
+            (define-key map (kbd "C-x C-e") 'treadmill-gerbil-eval-last)
             map)
   (company-mode-maybe))
 
