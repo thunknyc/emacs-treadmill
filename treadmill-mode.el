@@ -394,13 +394,13 @@
          (spawn-b (if spawn-p (process-buffer spawn-p) nil)))
     (delete-process repl-p)
     (kill-buffer repl-b)
-    (kill-buffer treadmill-history-buffer)
     (when spawn-p
       (delete-process spawn-p)
       (kill-buffer spawn-b))))
 
 (defun treadmill-ia-quit ()
   (interactive)
+  (kill-buffer treadmill-history-buffer)
   (with-current-buffer (process-buffer treadmill-repl-process)
     (treadmill-repl-quit))
   (kill-buffer))
