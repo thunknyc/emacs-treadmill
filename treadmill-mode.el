@@ -185,16 +185,34 @@
                          '(front-sticky t rear-nonsticky t read-only t))
     (setq inhibit-read-only saved-inhibit-read-only)))
 
+(defmacro treadmill-inserting (&rest exprs)
+  (let ((result (make-symbol "result")))
+    `(progn
+       (setq inhibit-read-only t)
+       (let ((,result (progn ,@exprs)))
+         (setq inhibit-read-only nil)
+         ,result))))
+
 (defun treadmill-insert (what)
   (let ((saved-inhibit-read-only inhibit-read-only))
     (setq inhibit-read-only t)
     (insert what)
     (setq inhibit-read-only saved-inhibit-read-only)))
 
+(defmacro treadmill-propertizing (properties &rest exprs)
+  (let ((beg (make-symbol "beg"))
+        (result (make-symbol "result")))
+    `(let ((,beg (point))
+           (,result (progn ,@exprs)))
+       (add-text-properties ,beg (point) ,properties)
+       ,result)))
+
 (defun treadmill-issue-prompt ()
   (interactive)
   (goto-char (point-max))
-  (treadmill-insert (format "%s> " (or treadmill-current-module "TOP")))
+  (treadmill-inserting
+   (treadmill-propertizing '(face font-lock-builtin-face)
+    (insert (format "%s> " (or treadmill-current-module "TOP")))))
   (setq treadmill-ia-mark (point-max-marker))
   (treadmill-secure-transcript))
 
@@ -218,21 +236,37 @@
     (treadmill-issue-prompt)
     (insert unsent-input)))
 
-(defun treadmill-format-result (result)
+(defun treadmill-insert-result (result)
   (let ((values (car result))
         (stdout (cadr result))
         (stderr (caddr result)))
-    (let ((values-str
-           (if (null values) "" (format "%s" values)))
-         (stdout-str
-           (if (string-empty-p stdout) ""
-             (format "\nOutput:\n```\n%s\n```" stdout)))
-          (stderr-str
-           (if (string-empty-p stderr) ""
-             (format "\nError output:\n```\n%s\n```" stderr))))
-      (let ((output-string (format "%s%s%s" values-str stdout-str stderr-str)))
-        (if (string-empty-p output-string) ""
-          (format "%s\n" output-string))))))
+    (treadmill-propertizing
+     '(face font-lock-keyword-face)
+     (insert (if (null values) "" (format "%s" values))))
+    (if (string-empty-p stdout) ""
+      (progn
+        (treadmill-propertizing
+         '(face font-lock-comment-face)
+         (insert (format "\nOutput:\n```\n")))
+        (treadmill-propertizing
+         '(face font-lock-string-face)
+         (insert (format "%s\n" stdout)))
+        (treadmill-propertizing
+         '(face font-lock-comment-face)
+         (insert (format "```")))))
+    '(face font-lock-warning-face)
+    (if (string-empty-p stderr) ""
+      (progn
+        (treadmill-propertizing
+         '(face font-lock-comment-face)
+         (insert (format "\nError:\n```\n")))
+        (treadmill-propertizing
+         '(face font-lock-warning-face)
+         (insert (format "%s\n" stderr)))
+        (treadmill-propertizing
+         '(face font-lock-comment-face)
+         (insert (format "```")))))
+    (if values (insert "\n"))))
 
 (defvar-local treadmill-history-buffer nil)
 (defvar-local treadmill-input-is-history nil)
@@ -321,7 +355,7 @@
      (lambda (result)
        (with-current-buffer b
          (goto-char (point-max))
-         (treadmill-insert (treadmill-format-result result))
+         (treadmill-inserting (treadmill-insert-result result))
          (treadmill-issue-prompt))))))
 
 (defun treadmill-connect (host port)
@@ -350,7 +384,8 @@
       (switch-to-buffer b)
       (setq treadmill-repl-process repl-p)
       (setq treadmill-history-buffer (generate-new-buffer "*treadmill-history*"))
-      (insert ";;; Welcome to the Gerbil Treadmill\n")
+      (treadmill-propertizing '(face font-lock-comment-face)
+       (insert ";;; Welcome to the Gerbil Treadmill\n"))
       (treadmill-eval1-async
        "(import :thunknyc/apropos)" (lambda (ignore) 'ignore))
       (treadmill-issue-prompt)
