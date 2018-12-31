@@ -476,23 +476,58 @@
     (treadmill-repl-quit))
   (kill-buffer))
 
-(defun treadmill-gerbil-eval-last (arg)
-  (interactive "P")
-  (let ((g-b (current-buffer))
-        (ia-b (and treadmill-current-interaction-buffer
-                   (get-buffer treadmill-current-interaction-buffer))))
-    (if ia-b
-        (let* ((sexp (elisp--preceding-sexp))
-               (str (format "%S" sexp))
-               (module (treadmill-gerbil-current-module)))
+(defun treadmill-gerbil-send-region (start end &optional arg)
+  (interactive "r")
+  (let ((sexp (buffer-substring-no-properties start end))
+        (g-b (current-buffer)))
+    (if-let ((ia-b (and treadmill-current-interaction-buffer
+                        (get-buffer treadmill-current-interaction-buffer))))
+        (let* ((module (treadmill-gerbil-current-module)))
           (with-current-buffer ia-b
             (treadmill-eval/io-async
-             str "" module
+             sexp "" module
              (lambda (val)
                (if arg
                    (with-current-buffer g-b (insert (format "%s" (car val))))
-                   (message "=> %s" (car val)))))))
+                 (message "=> %s" (car val)))))))
       (error "Treadmill: No current interaction buffer."))))
+
+(defun treadmill-gerbil-send-definition ()
+  (interactive)
+  (save-excursion
+   (end-of-defun)
+   (let ((end (point)))
+     (beginning-of-defun)
+     (treadmill-send-region (point) end))))
+
+(defun treadmill-gerbil-eval-last (arg)
+  (interactive "P")
+  (treadmill-gerbil-send-region
+   (save-excursion (backward-sexp) (point))
+   (point)
+   arg))
+
+(defun treadmill-gerbil-eval-toplevel ()
+  (interactive)
+  (save-excursion
+   (end-of-defun)
+   (let ((end (point)))
+     (beginning-of-defun)
+     (treadmill-gerbil-send-region (point) end nil))))
+
+(defvar-local treadmill-switch-last-buffer nil)
+
+(defun treadmill-ia-switch ()
+  (interactive)
+  (if treadmill-switch-last-buffer
+      (switch-to-buffer treadmill-switch-last-buffer)
+    (error "No most recent Gerbil buffer.")))
+
+(defun treadmill-gerbil-switch ()
+  (interactive)
+  (let ((b (current-buffer)))
+    (switch-to-buffer (get-buffer treadmill-current-interaction-buffer))
+    (setq treadmill-switch-last-buffer b)))
 
 (defun treadmill-symbol-at-point ()
   (save-excursion
@@ -542,6 +577,7 @@
 (defvar treadmill-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET") 'treadmill-ia-eval)
+    (define-key map (kbd "C-c C-z") 'treadmill-ia-switch)
     (define-key map (kbd "C-c m") 'treadmill-ia-enter-module)
     (define-key map (kbd "C-c q") 'treadmill-ia-quit)
     (define-key map (kbd "M-p") 'treadmill-ia-history-previous)
@@ -565,7 +601,11 @@
   "Mode for talking to Treadmill in Gerbil buffers"
   :lighter " TM"
   :keymap (let ((map (make-sparse-keymap)))
+            (define-key map (kbd "C-c C-c") 'treadmill-gerbil-send-region)
+            (define-key map (kbd "C-c C-e") 'treadmill-gerbil-eval-toplevel)
             (define-key map (kbd "C-x C-e") 'treadmill-gerbil-eval-last)
+            (define-key map (kbd "C-c C-z") 'treadmill-gerbil-switch)
+            (define-key map (kbd "C-M-x") 'treadmill-gerbil-eval-toplevel)
             (define-key map (kbd "C-c m") 'treadmill-gerbil-enter-module)
             map)
   (company-mode-maybe))
