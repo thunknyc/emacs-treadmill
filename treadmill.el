@@ -125,6 +125,10 @@ if a package file is found."
                (warn "No package file name for Gerbil source"))))))
 
 (defun treadmill-gxi-location ()
+  "Return location of `gxi' command, the Gerbil interpreter.
+
+Consult environment for Gerbil location or, if defined return
+TREADMILL-INTERPRETER-NAME."
   (let ((gerbil-home (getenv "GERBIL_HOME")))
     (cond ((and (bound-and-true-p treadmill-interpreter-name)
                 (not (string-empty-p treadmill-interpreter-name)))
@@ -140,12 +144,15 @@ if a package file is found."
   (treadmill-start-server))
 
 (defun treadmill-command ()
+  "Return the command to execute when spawning Gerbil interpreter."
   (list (treadmill-gxi-location)
         "-e" "(import :thunknyc/treadmill) (start-treadmill!)"))
 
-(defvar-local treadmill-repl-error-level nil)
+(defvar-local treadmill-repl-error-level nil
+  "Depth of error level in the network REPL.")
 
 (defun treadmill-repl-value ()
+  "Extract result value from network REPL buffer."
   (goto-char (point-max))
   (when (search-backward-regexp "\r\n\\([0-9]*\\)> " nil t)
     (let ((prompt (match-string 0))
@@ -156,6 +163,10 @@ if a package file is found."
       (buffer-substring 1 (- (point-max) (length prompt))))))
 
 (defun treadmill-lowlevel-completion-filter (proc)
+  "Construct a lowlevel evaluation REPL process filter.
+
+Returns a filter that executes PROC on the single returned
+evaluation result."
   (let ((proc proc))
     (lambda (p s)
       ;; Boilerplate
@@ -180,6 +191,10 @@ if a package file is found."
                   (funcall proc result))))))))))
 
 (defun treadmill-repl-completion-filter (proc)
+  "Construct an evaluation REPL process filter.
+
+Returns a filter that executes PROC on all returned values,
+standard out, and stdandard error."
   (lambda (p s)
     ;; Boilerplate
     (when (buffer-live-p (process-buffer p))
@@ -203,6 +218,10 @@ if a package file is found."
                 (funcall proc (read result))))))))))
 
 (defun treadmill-repl-filter (p s)
+  "Process the results of an evaluation.
+
+Determine if process P has completed an interaction by delivering
+string S. If so, process the compelted result."
   ;; Boilerplate
   (when (buffer-live-p (process-buffer p))
     (with-current-buffer (process-buffer p)
@@ -228,6 +247,11 @@ if a package file is found."
               (message "=> %S" (read result)))))))))
 
 (defun treadmill-spawn-filter (p s)
+  "Gerbil interpreter spawn filter function.
+
+Determine when process P has, by delivering string S provided the
+output from the Gerbil interpreter which tells us which port to
+connect to."
   ;; Boilerplate
   (when (buffer-live-p (process-buffer p))
     (with-current-buffer (process-buffer p)
@@ -272,12 +296,17 @@ content."
          ,result))))
 
 (defun treadmill-insert (what)
+  "Insert WHAT into interaction buffer using INHIBIT-READ-ONLY."
   (let ((saved-inhibit-read-only inhibit-read-only))
     (setq inhibit-read-only t)
     (insert what)
     (setq inhibit-read-only saved-inhibit-read-only)))
 
 (defmacro treadmill-propertizing (properties &rest exprs)
+  "Propertize all text inserted into buffer.
+
+Applies PROPERTIES to all text between the value of POINT before
+EXPRS are evaluated and the value of POINT afterwards."
   (let ((beg (make-symbol "beg"))
         (result (make-symbol "result")))
     `(let ((,beg (point))
@@ -295,9 +324,14 @@ content."
   (setq treadmill-ia-mark (point-max-marker))
   (treadmill-secure-transcript))
 
-(defvar-local treadmill-current-module nil)
+(defvar-local treadmill-current-module nil
+  "Current module of an interaction or Gerbil source.")
 
 (defun treadmill-normalize-module-string (module)
+  "Return a string representation of MODULE.
+
+Returned string is suitable for display in the interaction
+prompt."
   (cond ((equal module "TOP") nil)
         ((> (length module) 0) module)
         (nil)))
@@ -319,6 +353,7 @@ content."
     (insert unsent-input)))
 
 (defun treadmill-insert-result (result)
+  "Insert RESULT into interaction buffer."
   (let ((values (car result))
         (stdout (cadr result))
         (stderr (caddr result)))
@@ -350,16 +385,23 @@ content."
          (insert (format "```")))))
     (if values (insert "\n"))))
 
-(defvar-local treadmill-history-buffer nil)
-(defvar-local treadmill-input-is-history nil)
-(defvar-local treadmill-history-changing-buffer nil)
+(defvar-local treadmill-history-buffer nil
+  "Buffer in which history items are stored and retrieved.")
+
+(defvar-local treadmill-input-is-history nil
+  "True is user has not touched interaction input after inserted by history.")
+
+(defvar-local treadmill-history-changing-buffer nil
+  "A semaphore to prevent simultaneous manipulation of the history")
 
 (defun treadmill-history-reset (_b _e _l)
+  "Indicate that input is nonhistorical due to user editing."
   (when (not treadmill-history-changing-buffer)
     (setq treadmill-input-is-history nil)
     (with-current-buffer treadmill-history-buffer (goto-char (point-max)))))
 
 (defun treadmill-history-replace-input (s)
+  "Kill the current input, replacing it with S."
   (setq treadmill-history-changing-buffer t)
   (if treadmill-input-is-history
       (delete-region treadmill-ia-mark (point-max))
@@ -369,6 +411,7 @@ content."
   (setq treadmill-input-is-history t))
 
 (defun treadmill-history-advance ()
+  "Move POINT to the next history item in history buffer."
   (cond ((equal (point) (point-max))    ; nothing to do
          nil)
         (t
@@ -378,6 +421,7 @@ content."
            (goto-char (point-max))))))
 
 (defun treadmill-history-next ()
+  "Return next history item from history buffer."
   (with-current-buffer treadmill-history-buffer
     (treadmill-history-advance)
     (cond ((equal (point) (point-max))
@@ -396,6 +440,7 @@ content."
                    expr)))))))
 
 (defun treadmill-history-previous ()
+  "Return previous history item from history buffer."
   (with-current-buffer treadmill-history-buffer
     (let ((expr-end (point)))
       (cond ((search-backward-regexp ";;;;;;;;;;\n" nil t)
@@ -418,6 +463,7 @@ content."
     (treadmill-history-replace-input h)))
 
 (defun treadmill-push-history-item (input)
+  "Add INPUT to the end of the history buffer and make it current item."
   (let ((cleaned (string-trim input)))
     (when (not (string-empty-p cleaned))
       (with-current-buffer treadmill-history-buffer
@@ -477,16 +523,15 @@ content."
       (treadmill-mode))))
 
 (defun treadmill-start-server ()
+  "Create process to spawn a network REPL and connect to it."
   (let* ((b (generate-new-buffer "*treadmill-spawn*"))
          (p (make-process :name "treadmill-spawn" :buffer b :coding 'utf-8
                           :type 'pipe :command (treadmill-command)
                           :filter 'treadmill-spawn-filter)))
     (with-current-buffer b (setq treadmill-spawn-process p))))
 
-(defun treadmill-repl-process* (p)
-  (buffer-local-value 'treadmill-repl-process (process-buffer p)))
-
 (defun treadmill-eval1-async (s completion)
+  "Evaluate S in network REPL and invoke COMPLETION when done."
   (let ((p treadmill-repl-process))
     (with-current-buffer (process-buffer p)
       (erase-buffer)
@@ -496,6 +541,7 @@ content."
       (process-send-string p (format "%s\n" s)))))
 
 (defmacro treadmill-with-connection (&rest exprs)
+  "Evalutate EXPRS in context where network REPL process is accessible."
   (let ((temp-b (make-symbol "buffer")))
     `(if (bound-and-true-p treadmill-repl-process)
          (progn ,@exprs)
@@ -504,10 +550,19 @@ content."
                    (get-buffer treadmill-current-interaction-buffer))))
          (with-current-buffer ,temp-b ,@exprs)))))
 
-(defvar-local treadmill-eval-waiting nil)
-(defvar-local treadmill-eval-value nil)
+(defvar-local treadmill-eval-waiting nil
+  "Indication that a blocking network REPL evaluation is occurring.")
+
+(defvar-local treadmill-eval-value nil
+  "Value of last blocking network REPL evaluation.")
 
 (defun treadmill-eval1 (s)
+  "Evaluate single expression S in network REPL.
+
+Evaluate S synchronously (i.e. by blocking) without exception
+protection and return the value.  The S parameter should be
+an expression that returns a value (not e.g. `(define foo 42)` as
+a no-value result hangs this procedure."
   (treadmill-with-connection
    (setq treadmill-eval-waiting t)
      (let ((b (current-buffer)))
@@ -522,6 +577,7 @@ content."
      treadmill-eval-value))
 
 (defun treadmill-module-string (mod)
+  "Return module string for MOD suitable for use by evaluation procedures."
   (if mod
       (format "'%s" mod)
       "#f"))
@@ -530,6 +586,12 @@ content."
 ;; `*' star need to be passed a spawn process, which sucks, because
 ;; spawning is not necessary.
 (defun treadmill-eval-io-async (expr-string input-string module completion)
+  "Evaluate EXPR-STRING with INPUT-STRING as standard input.
+
+In the context of MODULE, evaluate EXPR-STRING in the network
+REPL, providing INPUT-STRING as input via a string input port.
+When complete, invoke COMPLETION with the results of the
+evaluation."
   (let ((p treadmill-repl-process))
     (with-current-buffer (process-buffer p)
       (erase-buffer)
@@ -541,6 +603,7 @@ content."
         (process-send-string p s)))))
 
 (defun treadmill-repl-quit ()
+  "Tear down processes and delete buffers associated with the network REPL."
   (let* ((repl-p treadmill-repl-process)
          (repl-b (current-buffer))
          (spawn-p (buffer-local-value 'treadmill-spawn-process repl-b))
@@ -553,6 +616,7 @@ content."
 
 (defun treadmill-ia-quit ()
   "Shut down Treadmill.
+
 Delete the current Treadmill interaction buffer and all related
 buffers and processes."
   (interactive)
@@ -563,6 +627,7 @@ buffers and processes."
 
 (defun treadmill-gerbil-send-region (start end &optional arg)
   "Evaluate the current region.
+
 Evaluate the expression(s) between START and END.  If ARG is
 non-nil, insert the resulting values after point.  Otherwise
 display the resulting values in the message area."
@@ -583,6 +648,7 @@ display the resulting values in the message area."
 
 (defun treadmill-gerbil-eval-last (arg)
   "Evaluate the expression before POINT.
+
 If ARG is non-nil, insert the resulting value(s) at POINT,
 otherwise display the results in the message area."
   (interactive "P")
@@ -600,7 +666,8 @@ otherwise display the results in the message area."
      (beginning-of-defun)
      (treadmill-gerbil-send-region (point) end nil))))
 
-(defvar-local treadmill-switch-last-buffer nil)
+(defvar-local treadmill-switch-last-buffer nil
+  "Name of Gerbil buffer that most recently switched to interaction buffer.")
 
 (defun treadmill-ia-switch ()
   "Switch to the most recent Gerbil buffer."
@@ -616,16 +683,13 @@ otherwise display the results in the message area."
     (switch-to-buffer (get-buffer treadmill-current-interaction-buffer))
     (setq treadmill-switch-last-buffer b)))
 
-(defun treadmill-symbol-at-point ()
-  (save-excursion
-    (when (re-search-backward "[^-0\\^-9A-Za-z#_%#@!*|+><./?]\\([-0\\^-9A-Za-z#_%#@!*|+><./?]+\\)$")
-      (match-string 1))))
-
 (defun treadmill-complete (prefix)
+  "Return completion candidates for symbol PREFIX using network REPL."
   (let ((expr (format "(complete \"^%s\")" prefix)))
     (read (treadmill-eval1 expr))))
 
 (defun treadmill-complete-meta (name)
+  "Return completion metadata for NAME using network REPL."
   (let ((meta
          (read (treadmill-eval1 (format "(completion-meta \"%s\")" name)))))
     (if meta (format "Modules: %s" (string-join meta " "))
@@ -633,6 +697,7 @@ otherwise display the results in the message area."
 
 (defun treadmill-move-beginning-of-line (n-lines)
   "Move to the beginning of current line.
+
 If N-LINES is 1 and the current line contains the interaction
 prompt and POINT is after it, move POINT to the first editable
 position.  Otherwise, function just as MOVE-BEGINNING-OF-LINE."
@@ -641,11 +706,13 @@ position.  Otherwise, function just as MOVE-BEGINNING-OF-LINE."
          (goto-char treadmill-ia-mark))
         (t (move-beginning-of-line n-lines))))
 
-(defvar treadmill-use-company nil)
+(defvar treadmill-use-company nil
+  "Non-nil if Treadmill is using company for completion.")
 
 (when (boundp 'company-mode)
   (require 'cl-lib)
-  (defun treadmill-company-backend (command &optional arg &rest ignored)
+  (defun treadmill-company-backend (command &optional arg &rest _ignored)
+    "Working with Company by evaluating COMMAND, using ARG if approporiate."
     (interactive (list 'interactive))
     (cl-case command
       (interactive (company-begin-backend 'treadmill-company-backend))
@@ -661,11 +728,13 @@ position.  Otherwise, function just as MOVE-BEGINNING-OF-LINE."
   (setq treadmill-use-company t))
 
 (defun treadmill-company-mode-maybe ()
+  "Activate company mode if present."
   (if treadmill-use-company
       (company-mode)))
 
 ;;###autoload
-(defvar treadmill-mode-hook nil)
+(defvar treadmill-mode-hook nil
+  "Hook for executing code after Treadmill starts.")
 
 (defvar treadmill-mode-map
   (let ((map (make-sparse-keymap)))
@@ -676,7 +745,8 @@ position.  Otherwise, function just as MOVE-BEGINNING-OF-LINE."
     (define-key map (kbd "M-p") 'treadmill-ia-history-previous)
     (define-key map (kbd "M-n") 'treadmill-ia-history-next)
     (define-key map (kbd "C-a") 'treadmill-move-beginning-of-line)
-    map))
+    map)
+  "Key map for Treadmill.")
 
 ;;###autoload
 (defun treadmill-mode ()
