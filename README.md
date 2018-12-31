@@ -42,22 +42,26 @@ environment variable. You can override this behavior by setting
 Once you're in the `*treadmill*` buffer, you can type expressions and
 evaluate them in the current module.
 
-## Key bindings
+## Default Key bindings
 
-### Interactive buffer
+### Interaction buffers
 
-| Binding | Procedure | Description |
-| --- | --- | --- |
-| `RET` | `treadmill-ia-eval` | Evaluate expression entered at prompt. |
-| ` C-c q` | `treadmill-ia-quit` | Close interactive session and associated processes and buffers. |
-| `C-c m` | `treadmill-ia-enter-module` | Prompt for a module name in which to evaluate entered expressions. |
+| Binding | Description |
+| --- | --- |
+| `RET` | Evaluate expression entered at prompt. |
+| ` C-c q` | Close interactive session and associated processes and buffers. |
+| `C-c m` | Prompt for a module name in which to evaluate entered expressions. |
+| `C-c C-z` | Switch back to the most recent switched-from Gerbil buffer. |
 
 ### Gerbil buffers
 
-| Binding | Procedure | Description |
-| --- | --- | --- |
-| `C-c C-e` | `treadmill-gerbil-eval-last` | Evaluate last sexp in current Treadmill interaction buffer session using this buffer's current module. |
-| `C-c m` | `treadmill-gerbil-enter-module` | Prompt for a module name in which to evaluate current buffer. |
+| Binding | Description |
+| --- | --- |
+| `C-x C-e` | Evaluate last sexp in current Treadmill interaction buffer session using this buffer's current module. |
+| `C-c C-e` | Evaluate the current region. |
+| `C-c C-c`, `C-M-x` | Evaluate the current toplevel. |
+| `C-c m` | Change the buffer's current module, overriding the module discerned from the nearest `gerbil.pkg` file. |
+| `C-c C-z` | Switch to the current Treadmill interaction buffer. |
 
 ## Notes
 
