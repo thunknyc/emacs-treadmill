@@ -384,11 +384,11 @@
               (setq treadmill-repl-process repl-p))
       (switch-to-buffer b)
       (setq treadmill-repl-process repl-p)
-      (setq treadmill-history-buffer (generate-new-buffer "*treadmill-history*"))
+      (setq treadmill-history-buffer
+            (generate-new-buffer "*treadmill-history*"))
       (treadmill-propertizing '(face font-lock-comment-face)
        (insert ";;; Welcome to the Gerbil Treadmill\n"))
-      (treadmill-eval1-async
-       "(import :thunknyc/apropos)" (lambda (ignore) 'ignore))
+      (treadmill-eval1 "(begin (import :thunknyc/apropos) (thread-start! (make-thread (lambda () (current-apropos-db)))))")
       (treadmill-issue-prompt)
       (treadmill-mode))))
 
