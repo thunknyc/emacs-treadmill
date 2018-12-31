@@ -230,7 +230,8 @@
 (defun treadmill-ia-enter-module (module)
   (interactive "sEnter module: (\"\" for TOP): ")
   (setq treadmill-current-module (treadmill-normalize-module-string module))
-  (let ((unsent-input (buffer-substring treadmill-ia-mark (point-max))))
+  (let ((unsent-input (buffer-substring-no-properties
+                       treadmill-ia-mark (point-max))))
     (goto-char (point-max))
     (insert "\n")
     (treadmill-issue-prompt)
@@ -535,7 +536,9 @@
       (match-string 1))))
 
 (defun treadmill-complete (prefix)
-  (read (treadmill-eval1 (format "(complete \"^%s\")" prefix))))
+  (let ((expr (format "(complete \"^%s\")" prefix)))
+    (message "Expr to eval: %s" expr)
+    (read (treadmill-eval1 expr))))
 
 (defun treadmill-complete-meta (name)
   (let ((meta
