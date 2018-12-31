@@ -1,0 +1,2 @@
+(package: thunknyc)
+(depends: github.com/thunknyc/apropos)

@@ -665,5 +665,4 @@
 ;;###autoload
 (add-hook 'gerbil-mode-hook 'treadmill-gerbil-mode)
 
-(provide 'treadmill-mode)
-(provide 'treadmill-gerbil-mode)
+(provide 'treadmill)

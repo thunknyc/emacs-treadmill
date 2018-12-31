@@ -8,7 +8,7 @@ Put `treadmill.el` somehwere that Emacs knows about and stick this in your `.ema
 
 ```
 (require 'company)
-(require 'treadmill-mode)
+(require 'treadmill)
 ```
 
 You can remove `(require 'company)` if you don't want autocompletion
