@@ -247,7 +247,7 @@
       (progn
         (treadmill-propertizing
          '(face font-lock-comment-face)
-         (insert (format "\nOutput:\n```\n")))
+         (insert (format "\n```stdout\n")))
         (treadmill-propertizing
          '(face font-lock-string-face)
          (insert (format "%s\n" stdout)))
@@ -259,7 +259,7 @@
       (progn
         (treadmill-propertizing
          '(face font-lock-comment-face)
-         (insert (format "\nError:\n```\n")))
+         (insert (format "\n```stderr\n")))
         (treadmill-propertizing
          '(face font-lock-warning-face)
          (insert (format "%s\n" stderr)))
@@ -344,7 +344,7 @@
 
 (defun treadmill-ia-eval ()
   (interactive)
-  (let ((s (buffer-substring treadmill-ia-mark (point-max)))
+  (let ((s (buffer-substring-no-properties treadmill-ia-mark (point-max)))
         (stdin "")
         (b (current-buffer)))
     (goto-char (point-max))
