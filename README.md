@@ -103,7 +103,7 @@ ARG)` if they do not specifically handle an event.
 | Event | Type | Description |
 | --- | --- | --- |
 | `command` | Filter | gxi command line arguments (ARG). |
-| `connected` | Notify | nteraction buffer (ARG) connected to network REPL. |
+| `connected` | Notify | Interaction buffer (ARG) connected to network REPL. |
 
 ## Buffers
 
