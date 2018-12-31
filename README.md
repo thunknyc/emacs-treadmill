@@ -29,15 +29,20 @@ modules and then installing them and initializing them automatically.)
 
 ## Installation
 
-Grab treadmill.el and put it in your Emacs load path. Stick this in
-your `.emacs.d/init.el`, `.emacs`, etc.:
+I'm currently going through the process of getting Treadmill available
+through MELPA; until that's done you won't be able to do the regular
+`package-list-packages` routine; you'll need to grab `treadmill.el`
+and put it in your Emacs load path. After you do that, stick this in
+your `.emacs.d/init.el`, `.emacs`, or whatever:
 
 ```
-(require 'treadmill)
+(require 'treadmill) ; will not be requires with MELPA package
+(add-hook 'gerbil-mode-hook #'treadmill-gerbil-mode)
+
 ```
 
-Additionally, you will need to install the Gerbil side of
-Treadmill:
+Additionally, you will need to [install
+Gerbil](https://cons.io/guide/) and the Treadmill server package:
 
 `gxpkg install github.com/thunknyc/gerbil-treadmill`
 
