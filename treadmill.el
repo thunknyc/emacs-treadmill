@@ -46,7 +46,6 @@
 
 ;;; Code:
 
-(require 'gerbil)
 (require 'subr-x)
 
 (defvar treadmill-interpreter-name nil
