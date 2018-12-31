@@ -81,6 +81,23 @@
 (defvar-local treadmill--ia-mark nil
   "The minimum editable mark in an interaction buffer.")
 
+;;;###autoload
+(defvar treadmill-plugin-functions nil
+  "Abnormal hook for reigstering plugin functions.")
+
+(defun treadmill--plugin-fold (command arg)
+  "Send COMMAND and ARG to each plugin."
+  (let ((hooks treadmill-plugin-functions)
+        (arg arg))
+    (while hooks
+      (let ((proc (car hooks)))
+        (setq arg (funcall proc command arg))
+        (setq hooks (cdr hooks))))
+    arg))
+
+(defun treadmill--plugin-hook (command arg)
+  (run-hook-with-args 'treadmill-plugin-functions command arg))
+
 (defun treadmill--find-pkg (dir)
   "Find and parse a package file in DIR.
 Given a directory name DIR, load and parse the package file
@@ -495,8 +512,12 @@ prompt."
 (defun treadmill--start-server ()
   "Create process to spawn a network REPL and connect to it."
   (let* ((b (generate-new-buffer "*treadmill-spawn*"))
-         (p (make-process :name "treadmill-spawn" :buffer b :coding 'utf-8
-                          :type 'pipe :command (treadmill--command)
+         (p (make-process :name "treadmill-spawn"
+                          :buffer b :coding 'utf-8
+                          :type 'pipe
+                          :command (treadmill--plugin-fold
+                                    'command
+                                    (treadmill--command))
                           :filter 'treadmill--spawn-filter)))
     (with-current-buffer b (setq treadmill--spawn-process p))))
 
