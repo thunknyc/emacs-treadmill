@@ -84,7 +84,7 @@
 ;;;###autoload
 (defun treadmill-plugin-null-hook (event arg)
   "The no-op plugin handler."
-  (cond ((eq? event 'command) arg)
+  (cond ((eq event 'command) arg)
         (t nil)))
 
 ;;;###autoload
