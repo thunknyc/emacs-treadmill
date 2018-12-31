@@ -2,6 +2,31 @@
 
 ![Gerbil Screenshot](/doc/screenshot.png?raw=true "Gerbil in action, New Year's Eve, 2018")
 
+## Introduction
+
+[Gerbil](https://cons.io) is a great [Scheme](https://schemers.org)
+and it deserves a great development environment. While you're waiting
+for someone to create it, you can use Treadmill.
+
+Treadmill is shamelessly modelled on
+[CIDER](https://cider.readthedocs.io/en/latest/), the Clojure
+Emacs-based IDE. I wrote a profiler for CIDER -- which later became
+_the_ profiler for it -- and while doing so I came to appreciate its
+design, as well as the leadership of the team.
+
+Anyway, while Treadmill does not currently support the sort of
+modularity that to me is the hallmark of modern CIDER's elegance,
+that's the direction it's moving in.
+
+(If you're wondering what exactly I mean about CIDER's modularity,
+here's a quick background: If you're writing an IDE in Emacs, you
+quickly realize that you'll be writing both Elisp and code for your
+REPL back-end, and what you _don't_ want to do is require a lot of
+tedious, error-prone configuration to ensure that the Elisp is talking
+to a REPL that has the appropriate support for the IDE's features. In
+Gerbil, I think we'll handle this by associating packages with IDE
+modules and then installing them and initializing them automatically.)
+
 ## Installation
 
 Grab treadmill.el and put it in your Emacs load path. Stick this in
