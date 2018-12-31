@@ -1,4 +1,4 @@
-;;; treadmill-mode.el --- Development environment for Gerbil Scheme -*- lexical-binding: t -*-
+;;; treadmill.el --- Development environment for Gerbil Scheme -*- lexical-binding: t -*-
 
 ;; Copyright © 2018 Thunk NYC Corp.
 ;;
@@ -49,21 +49,41 @@
 (require 'gerbil)
 (require 'subr-x)
 
-(defvar treadmill-interpreter-name nil)
-(defconst treadmill-default-host "127.0.0.1")
+(defvar treadmill-interpreter-name nil
+  "Explicit location of the Gerbil interpreter.")
 
-(defvar treadmill-current-interaction-buffer nil)
+(defconst treadmill-default-host "127.0.0.1"
+  "Default host for network REPL connection.")
 
-(defvar-local treadmill-spawn-port nil)
-(defvar-local treadmill-spawn-process nil)
-(defvar-local treadmill-repl-awaiting-value nil)
+(defvar treadmill-current-interaction-buffer nil
+  "The interaction buffer in which expressions are evaluated.")
 
-(defvar-local treadmill-interaction-buffer nil)
-(defvar-local treadmill-repl-process nil)
+(defvar-local treadmill-spawn-port nil
+  "The REPL to connect to as reported by the Gerbil interpreter.")
 
-(defvar-local treadmill-ia-mark nil)
+(defvar-local treadmill-spawn-process nil
+  "The REPL-spawning process, if any, associated with a REPL
+  connection.")
+
+(defvar-local treadmill-repl-awaiting-value nil
+  "Indicates whether a synchronous REPL evaluation is awaiting a
+  value.")
+
+(defvar-local treadmill-interaction-buffer nil
+  "The interaction buffer associate with a particular Gerbil
+  source buffer.")
+
+(defvar-local treadmill-repl-process nil
+  "The REPL process associated with an interaction buffer.")
+
+(defvar-local treadmill-ia-mark nil
+  "The minimum editable mark in an interaction buffer.")
 
 (defun treadmill-find-pkg (dir)
+  "Find and parse a package file in DIR.
+Given a directory name DIR, load and parse the package file
+there.  Return the package name inside the file or nil if file
+doesn't exist or doesn't have a `package:' entry."
   (let ((pkg-file (format "%s/gerbil.pkg" dir)))
     (when (file-readable-p pkg-file)
         (let ((b (generate-new-buffer "*treadmill-find-pkg*")))
@@ -75,6 +95,10 @@
               (symbol-name (car (alist-get 'package: alist)))))))))
 
 (defun treadmill-build-module-name (els fdir)
+  "Build a module name through recursive descent of the filesystem.
+Recursively descend FDIR, accummulating found module path
+elements in ELS, and return a full-qualified module name string
+if a package file is found."
   (if (string-empty-p fdir) nil
     (if-let ((pkg (treadmill-find-pkg fdir)))
         (string-join (cons pkg els) "/")
@@ -84,11 +108,12 @@
            (substring (file-name-directory fdir) 0 -1))))))
 
 (defun treadmill-gerbil-current-module ()
+  "Return the module associated with the Gerbil buffer."
   (interactive)
   (cond ((bound-and-true-p treadmill-current-module)
          treadmill-current-module)
         ((not (buffer-file-name))
-         (warn "No module name for Gerbil unsaved buffer."))
+         (warn "No module name for Gerbil unsaved buffer"))
         (t (let* ((fname (buffer-file-name))
                   (module-leaf (file-name-sans-extension
                                 (file-name-nondirectory fname)))
@@ -97,7 +122,7 @@
                                (list module-leaf) fdir)))
                  (progn (setq treadmill-current-module module)
                         module)
-               (warn "No package file name for Gerbil source."))))))
+               (warn "No package file name for Gerbil source"))))))
 
 (defun treadmill-gxi-location ()
   (let ((gerbil-home (getenv "GERBIL_HOME")))
@@ -110,6 +135,7 @@
 
 ;;###autoload
 (defun treadmill-spawn ()
+  "Start a local Gerbil network REPL and connect to it."
   (interactive)
   (treadmill-start-server))
 
@@ -222,10 +248,14 @@
                nil t)
           (let ((port (string-to-number (match-string 1))))
             (setq treadmill-spawn-port port)
-            (message "Net repl starting on port %d." port)
+            (message "Net repl starting on port %d" port)
             (treadmill-connect "127.0.0.1" port)))))))
 
 (defun treadmill-secure-transcript ()
+  "Mark past interactions as read-only.
+The compexity of the procedure is related to properly managing
+the stickiness of the front and back of the
+content."
   (let ((saved-inhibit-read-only inhibit-read-only))
     (setq inhibit-read-only t)
     (add-text-properties (point-min) (point-max)
@@ -233,6 +263,7 @@
     (setq inhibit-read-only saved-inhibit-read-only)))
 
 (defmacro treadmill-inserting (&rest exprs)
+  "Evaluate EXPRS with INHIBIT-READ-ONLY true."
   (let ((result (make-symbol "result")))
     `(progn
        (setq inhibit-read-only t)
@@ -255,6 +286,7 @@
        ,result)))
 
 (defun treadmill-issue-prompt ()
+  "Issue a fresh prompt.  Useful if Treadmill gets confused."
   (interactive)
   (goto-char (point-max))
   (treadmill-inserting
@@ -271,10 +303,12 @@
         (nil)))
 
 (defun treadmill-gerbil-enter-module (module)
+  "Use MODULE when evaluating the current buffer."
   (interactive "sEnter module: (\"\" for TOP): ")
   (setq treadmill-current-module (treadmill-normalize-module-string module)))
 
 (defun treadmill-ia-enter-module (module)
+  "Use MODULE when evaluated expressions."
   (interactive "sEnter module: (\"\" for TOP): ")
   (setq treadmill-current-module (treadmill-normalize-module-string module))
   (let ((unsent-input (buffer-substring-no-properties
@@ -320,7 +354,7 @@
 (defvar-local treadmill-input-is-history nil)
 (defvar-local treadmill-history-changing-buffer nil)
 
-(defun treadmill-history-reset (b e l)
+(defun treadmill-history-reset (_b _e _l)
   (when (not treadmill-history-changing-buffer)
     (setq treadmill-input-is-history nil)
     (with-current-buffer treadmill-history-buffer (goto-char (point-max)))))
@@ -347,7 +381,7 @@
   (with-current-buffer treadmill-history-buffer
     (treadmill-history-advance)
     (cond ((equal (point) (point-max))
-           (message "No next history item.")
+           (message "No next history item")
            "")
           (t (let ((expr-start (+ (point) 11)))
                (goto-char expr-start)
@@ -369,14 +403,16 @@
                     (expr (buffer-substring expr-start expr-end)))
                (goto-char (match-beginning 0))
                expr))
-            (t (error "No previous history item."))))))
+            (t (error "No previous history item"))))))
 
 (defun treadmill-ia-history-next ()
+  "Replace the current input with the next history item."
   (interactive)
   (let ((h (treadmill-history-next)))
     (treadmill-history-replace-input h)))
 
 (defun treadmill-ia-history-previous ()
+  "Replace the current input with the previous history item."
   (interactive)
   (let ((h (treadmill-history-previous)))
     (treadmill-history-replace-input h)))
@@ -391,6 +427,7 @@
         (insert "\n")))))
 
 (defun treadmill-ia-eval ()
+  "Evaluate the expression(s) in the current input."
   (interactive)
   (let ((s (buffer-substring-no-properties treadmill-ia-mark (point-max)))
         (stdin "")
@@ -398,7 +435,7 @@
     (goto-char (point-max))
     (treadmill-insert "\n")
     (treadmill-push-history-item s)
-    (treadmill-eval/io-async
+    (treadmill-eval-io-async
      s stdin treadmill-current-module
      (lambda (result)
        (with-current-buffer b
@@ -408,6 +445,7 @@
 
 ;;###autoload
 (defun treadmill-connect (host port)
+  "Connect to a Gerbil network REPL already running on HOST at PORT."
   (interactive
    "sConnect to network REPL at host: \nsREPL port on %s: \n")
   (let* ((repl-b (generate-new-buffer "*treadmill-repl*"))
@@ -418,13 +456,11 @@
     ;; repl buffer, so we can tear down the spawn process when we kill
     ;; the repl.
     (let ((spawn-process treadmill-spawn-process))
-      (message "connect via spawn")
       (when spawn-process
         (setq treadmill-repl-process repl-p)
         (with-current-buffer repl-b
           (setq treadmill-spawn-process spawn-process))))
-    (message "Repl process is `%s'." repl-p)
-    (message "Connected to repl on port %d." port)
+    (message "Connected to repl on port %d" port)
     (let ((b (generate-new-buffer "*treadmill*")))
       (setq treadmill-current-interaction-buffer (buffer-name b))
       (with-current-buffer repl-b
@@ -445,10 +481,7 @@
          (p (make-process :name "treadmill-spawn" :buffer b :coding 'utf-8
                           :type 'pipe :command (treadmill-command)
                           :filter 'treadmill-spawn-filter)))
-    (with-current-buffer b
-      (setq treadmill-spawn-process p))
-    (message "Started `%s' in `%s'" p b)
-    p))
+    (with-current-buffer b (setq treadmill-spawn-process p))))
 
 (defun treadmill-repl-process* (p)
   (buffer-local-value 'treadmill-repl-process (process-buffer p)))
@@ -462,7 +495,7 @@
        p (treadmill-lowlevel-completion-filter completion))
       (process-send-string p (format "%s\n" s)))))
 
-(defmacro with-treadmill (&rest exprs)
+(defmacro treadmill-with-connection (&rest exprs)
   (let ((temp-b (make-symbol "buffer")))
     `(if (bound-and-true-p treadmill-repl-process)
          (progn ,@exprs)
@@ -475,7 +508,7 @@
 (defvar-local treadmill-eval-value nil)
 
 (defun treadmill-eval1 (s)
-  (with-treadmill
+  (treadmill-with-connection
    (setq treadmill-eval-waiting t)
      (let ((b (current-buffer)))
        (treadmill-eval1-async
@@ -496,7 +529,7 @@
 ;; Needs to be called inside an interaction buffer. Procs ending with
 ;; `*' star need to be passed a spawn process, which sucks, because
 ;; spawning is not necessary.
-(defun treadmill-eval/io-async (expr-string input-string module completion)
+(defun treadmill-eval-io-async (expr-string input-string module completion)
   (let ((p treadmill-repl-process))
     (with-current-buffer (process-buffer p)
       (erase-buffer)
@@ -519,6 +552,9 @@
       (kill-buffer spawn-b))))
 
 (defun treadmill-ia-quit ()
+  "Shut down Treadmill.
+Delete the current Treadmill interaction buffer and all related
+buffers and processes."
   (interactive)
   (kill-buffer treadmill-history-buffer)
   (with-current-buffer (process-buffer treadmill-repl-process)
@@ -526,6 +562,10 @@
   (kill-buffer))
 
 (defun treadmill-gerbil-send-region (start end &optional arg)
+  "Evaluate the current region.
+Evaluate the expression(s) between START and END.  If ARG is
+non-nil, insert the resulting values after point.  Otherwise
+display the resulting values in the message area."
   (interactive "r")
   (let ((sexp (buffer-substring-no-properties start end))
         (g-b (current-buffer)))
@@ -533,23 +573,18 @@
                         (get-buffer treadmill-current-interaction-buffer))))
         (let* ((module (treadmill-gerbil-current-module)))
           (with-current-buffer ia-b
-            (treadmill-eval/io-async
+            (treadmill-eval-io-async
              sexp "" module
              (lambda (val)
                (if arg
                    (with-current-buffer g-b (insert (format "%s" (car val))))
                  (message "=> %s" (car val)))))))
-      (error "Treadmill: No current interaction buffer."))))
-
-(defun treadmill-gerbil-send-definition ()
-  (interactive)
-  (save-excursion
-   (end-of-defun)
-   (let ((end (point)))
-     (beginning-of-defun)
-     (treadmill-send-region (point) end))))
+      (error "Treadmill: No current interaction buffer"))))
 
 (defun treadmill-gerbil-eval-last (arg)
+  "Evaluate the expression before POINT.
+If ARG is non-nil, insert the resulting value(s) at POINT,
+otherwise display the results in the message area."
   (interactive "P")
   (treadmill-gerbil-send-region
    (save-excursion (backward-sexp) (point))
@@ -557,6 +592,7 @@
    arg))
 
 (defun treadmill-gerbil-eval-toplevel ()
+  "Evaluate the current expression under or before POINT."
   (interactive)
   (save-excursion
    (end-of-defun)
@@ -567,12 +603,14 @@
 (defvar-local treadmill-switch-last-buffer nil)
 
 (defun treadmill-ia-switch ()
+  "Switch to the most recent Gerbil buffer."
   (interactive)
   (if treadmill-switch-last-buffer
       (switch-to-buffer treadmill-switch-last-buffer)
-    (error "No most recent Gerbil buffer.")))
+    (error "No most recent Gerbil buffer")))
 
 (defun treadmill-gerbil-switch ()
+  "Switch to the current Treadmill interaction buffer."
   (interactive)
   (let ((b (current-buffer)))
     (switch-to-buffer (get-buffer treadmill-current-interaction-buffer))
@@ -585,7 +623,6 @@
 
 (defun treadmill-complete (prefix)
   (let ((expr (format "(complete \"^%s\")" prefix)))
-    (message "Expr to eval: %s" expr)
     (read (treadmill-eval1 expr))))
 
 (defun treadmill-complete-meta (name)
@@ -595,6 +632,10 @@
       (format "No information for %s" name))))
 
 (defun treadmill-move-beginning-of-line (n-lines)
+  "Move to the beginning of current line.
+If N-LINES is 1 and the current line contains the interaction
+prompt and POINT is after it, move POINT to the first editable
+position.  Otherwise, function just as MOVE-BEGINNING-OF-LINE."
   (interactive "^p")
   (cond ((and (eq n-lines 1) (> (point) treadmill-ia-mark))
          (goto-char treadmill-ia-mark))
@@ -619,7 +660,7 @@
   (add-hook 'treadmill-mode-hook #'company-mode)
   (setq treadmill-use-company t))
 
-(defun company-mode-maybe ()
+(defun treadmill-company-mode-maybe ()
   (if treadmill-use-company
       (company-mode)))
 
@@ -637,22 +678,21 @@
     (define-key map (kbd "C-a") 'treadmill-move-beginning-of-line)
     map))
 
-(defvar-local after-change-functions nil)
-
 ;;###autoload
 (defun treadmill-mode ()
-  "Major mode for interacting with Gerbil"
+  "Major mode for interacting with Gerbil."
   (interactive)
   (use-local-map treadmill-mode-map)
   (setq mode-name "Treadmill Interaction")
   (setq major-mode 'treadmill-mode)
-  (company-mode-maybe)
+  (treadmill-company-mode-maybe)
+  (make-local-variable 'after-change-functions)
   (add-hook 'after-change-functions 'treadmill-history-reset)
   (run-hooks 'treadmill-mode-hook))
 
 ;;###autoload
 (define-minor-mode treadmill-gerbil-mode
-  "Mode for talking to Treadmill in Gerbil buffers"
+  "Mode for talking to Treadmill in Gerbil buffers."
   :lighter " TM"
   :keymap (let ((map (make-sparse-keymap)))
             (define-key map (kbd "C-c C-c") 'treadmill-gerbil-send-region)
@@ -662,11 +702,11 @@
             (define-key map (kbd "C-M-x") 'treadmill-gerbil-eval-toplevel)
             (define-key map (kbd "C-c m") 'treadmill-gerbil-enter-module)
             map)
-  (company-mode-maybe))
+  (treadmill-company-mode-maybe))
 
 ;;###autoload
 (add-hook 'gerbil-mode-hook 'treadmill-gerbil-mode)
 
 (provide 'treadmill)
 
-;;; treadmill-mode.el ends here
+;;; treadmill.el ends here

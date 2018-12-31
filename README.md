@@ -4,15 +4,14 @@
 
 ## Installation
 
-Treadmill is available as a package in MELPA. Stick this in your
-`.emacs.d/init.el`, `.emacs`, etc.:
+Grab treadmill.el and put it in your Emacs load path. Stick this in
+your `.emacs.d/init.el`, `.emacs`, etc.:
 
 ```
 (require 'treadmill)
 ```
 
-You can remove `(require 'company)` if you don't want autocompletion
-support.  Additionally, you will need to install the Gerbil side of
+Additionally, you will need to install the Gerbil side of
 Treadmill:
 
 `gxpkg install github.com/thunknyc/gerbil-treadmill`
