@@ -1,4 +1,48 @@
-;; -*- lexical-binding: t -*-
+;;; treadmill-mode.el --- Development environment for Gerbil Scheme -*- lexical-binding: t -*-
+
+;; Copyright © 2018 Thunk NYC Corp.
+;;
+;; Author: Edwin Watkeys <edw@poseur.com>
+;;
+;; URL: https://github.com/thunknyc/emacs-treadmill
+;; Keywords: languages gerbil scheme lisp
+;; Version: 0.1-snapshot
+;; Package-Requires: ((emacs "25.1") (company "0.9.0") (cl-lib "0.3"))
+
+;; Permission is hereby granted, free of charge, to any person
+;; obtaining a copy of this software and associated documentation
+;; files (the "Software"), to deal in the Software without
+;; restriction, including without limitation the rights to use, copy,
+;; modify, merge, publish, distribute, sublicense, and/or sell copies
+;; of the Software, and to permit persons to whom the Software is
+;; furnished to do so, subject to the following conditions:
+
+;; The above copyright notice and this permission notice shall be
+;; included in all copies or substantial portions of the Software.
+
+;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+;; EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+;; MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+;; NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+;; BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+;; ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+;; CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+;; SOFTWARE.
+
+;;; Commentary:
+
+;; Provides an interaction buffer and a minor-mode for Gerbil Scheme
+;; code.
+
+;;; Usage:
+
+;; Start a Gerbil network repl and connect:
+;; M-x treadmill-spawn
+
+;; Connect to an existing Gerbil network repl:
+;; M-x treadmill-connect
+
+;;; Code:
 
 (require 'gerbil)
 (require 'subr-x)
@@ -62,6 +106,7 @@
            (format "%s/bin/gxi" gerbil-home))
           (t nil))))
 
+;;###autoload
 (defun treadmill-spawn ()
   (interactive)
   (treadmill-start-server))
@@ -359,6 +404,7 @@
          (treadmill-inserting (treadmill-insert-result result))
          (treadmill-issue-prompt))))))
 
+;;###autoload
 (defun treadmill-connect (host port)
   (interactive
    "sConnect to network REPL at host: \nsREPL port on %s: \n")
@@ -575,6 +621,7 @@
   (if treadmill-use-company
       (company-mode)))
 
+;;###autoload
 (defvar treadmill-mode-hook nil)
 
 (defvar treadmill-mode-map
@@ -590,6 +637,7 @@
 
 (defvar-local after-change-functions nil)
 
+;;###autoload
 (defun treadmill-mode ()
   "Major mode for interacting with Gerbil"
   (interactive)
@@ -600,6 +648,7 @@
   (add-hook 'after-change-functions 'treadmill-history-reset)
   (run-hooks 'treadmill-mode-hook))
 
+;;###autoload
 (define-minor-mode treadmill-gerbil-mode
   "Mode for talking to Treadmill in Gerbil buffers"
   :lighter " TM"
@@ -615,7 +664,6 @@
 
 ;;###autoload
 (add-hook 'gerbil-mode-hook 'treadmill-gerbil-mode)
-;;###autoload
 
 (provide 'treadmill-mode)
 (provide 'treadmill-gerbil-mode)
