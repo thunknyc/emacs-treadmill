@@ -92,9 +92,19 @@ evaluate them in the current module.
 | `C-c m` | Change the buffer's current module, overriding the module discerned from the nearest `gerbil.pkg` file. |
 | `C-c C-z` | Switch to the current Treadmill interaction buffer. |
 
-## Notes
+## Plugins
 
-It's early days.
+Plugins are supported through the `treadmill-plugin-functions`
+abnormal hook. A plugin adds a function the the hook using `add-hook`
+and then is informed of various events or given the opportunity to
+modify values. The function receives two arguments and EVENT and an
+ARG. Hook functions should execute `(treadmill-plugin-null-hook EVENT
+ARG)` if they do not specifically handle an event.
+
+| Event | Type | Description |
+| --- | --- | --- |
+| `command` | Filter | gxi command line arguments (ARG). |
+| `connected` | Notify | nteraction buffer (ARG) connected to network REPL. |
 
 ## Buffers
 
