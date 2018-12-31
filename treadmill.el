@@ -666,3 +666,5 @@
 (add-hook 'gerbil-mode-hook 'treadmill-gerbil-mode)
 
 (provide 'treadmill)
+
+;;; treadmill-mode.el ends here

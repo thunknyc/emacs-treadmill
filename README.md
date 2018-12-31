@@ -4,10 +4,10 @@
 
 ## Installation
 
-Put `treadmill.el` somehwere that Emacs knows about and stick this in your `.emacs.d/init.el`, `.emacs`, etc.:
+Treadmill is available as a package in MELPA. Stick this in your
+`.emacs.d/init.el`, `.emacs`, etc.:
 
 ```
-(require 'company)
 (require 'treadmill)
 ```
 
