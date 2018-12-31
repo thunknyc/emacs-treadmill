@@ -9,6 +9,21 @@
 ;; Version: 0.1-snapshot
 ;; Package-Requires: ((emacs "25.1") (company "0.9.0") (cl-lib "0.3"))
 
+;;; Commentary:
+
+;; Provides an interaction buffer and a minor-mode for Gerbil Scheme
+;; code.
+
+;; Start a Gerbil network repl and connect:
+;; M-x treadmill-spawn
+
+;; Connect to an existing Gerbil network repl:
+;; M-x treadmill-connect
+
+;;; License:
+
+;; Copyright © 2018 Thunk NYC Corp.
+
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
 ;; files (the "Software"), to deal in the Software without
@@ -28,19 +43,6 @@
 ;; ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 ;; CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ;; SOFTWARE.
-
-;;; Commentary:
-
-;; Provides an interaction buffer and a minor-mode for Gerbil Scheme
-;; code.
-
-;;; Usage:
-
-;; Start a Gerbil network repl and connect:
-;; M-x treadmill-spawn
-
-;; Connect to an existing Gerbil network repl:
-;; M-x treadmill-connect
 
 ;;; Code:
 
