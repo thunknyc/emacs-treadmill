@@ -82,24 +82,31 @@
   "The minimum editable mark in an interaction buffer.")
 
 ;;;###autoload
+(defun treadmill-plugin-null-hook (event arg)
+  "The no-op plugin handler."
+  (cond ((eq? event 'command) arg)
+        (t nil)))
+
+;;;###autoload
 (defvar treadmill-plugin-functions nil
   "Abnormal hook for reigstering plugin functions.")
 
-(defun treadmill--plugin-fold (command arg)
-  "Send COMMAND and ARG to each plugin."
+(defun treadmill--plugin-fold (event arg)
+  "Send EVENT and filter ARG through each plugin."
   (let ((hooks treadmill-plugin-functions)
         (arg arg))
     (while hooks
       (let ((proc (car hooks)))
-        (setq arg (funcall proc command arg))
+        (setq arg (funcall proc event arg))
         (setq hooks (cdr hooks))))
     arg))
 
-(defun treadmill--plugin-hook (command arg)
-  (run-hook-with-args 'treadmill-plugin-functions command arg))
+(defun treadmill--plugin-hook (event arg)
+  (run-hook-with-args 'treadmill-plugin-functions event arg))
 
 (defun treadmill--find-pkg (dir)
   "Find and parse a package file in DIR.
+
 Given a directory name DIR, load and parse the package file
 there.  Return the package name inside the file or nil if file
 doesn't exist or doesn't have a `package:' entry."
@@ -507,7 +514,8 @@ prompt."
        (insert ";;; Welcome to the Gerbil Treadmill\n"))
       (treadmill--eval1 "(begin (import :thunknyc/apropos) (thread-start! (make-thread (lambda () (current-apropos-db)))))")
       (treadmill-issue-prompt)
-      (treadmill-mode))))
+      (treadmill-mode)
+      (treadmill--plugin-hook 'connected b))))
 
 (defun treadmill--start-server ()
   "Create process to spawn a network REPL and connect to it."
