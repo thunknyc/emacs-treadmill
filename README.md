@@ -14,18 +14,17 @@ Emacs-based IDE. I wrote a profiler for CIDER -- which later became
 _the_ profiler for it -- and while doing so I came to appreciate its
 design, as well as the leadership of the team.
 
-Anyway, while Treadmill does not currently support the sort of
-modularity that to me is the hallmark of modern CIDER's elegance,
-that's the direction it's moving in.
+Treadmill supports plugins via its `treadmill-plugin-functions`
+abnormal hook. Currently, any feature that requires modification of
+the interpreter command line or evaluation of expressions after
+connection can be accomodated without changes to Treadmill
+proper. This allows front end features to have the in-process code
+they need to function without requiring users to painstakingly
+configure each side of the connection separately.
 
-(If you're wondering what exactly I mean about CIDER's modularity,
-here's a quick background: If you're writing an IDE in Emacs, you
-quickly realize that you'll be writing both Elisp and code for your
-REPL back-end, and what you _don't_ want to do is require a lot of
-tedious, error-prone configuration to ensure that the Elisp is talking
-to a REPL that has the appropriate support for the IDE's features. In
-Gerbil, I think we'll handle this by associating packages with IDE
-modules and then installing them and initializing them automatically.)
+It is my goal that Treadmill allows members of the community the
+Gerbil community innovate without incurring the friction of
+coordinating.
 
 ## Installation
 
