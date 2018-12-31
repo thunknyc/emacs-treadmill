@@ -137,7 +137,7 @@ TREADMILL-INTERPRETER-NAME."
            (format "%s/bin/gxi" gerbil-home))
           (t nil))))
 
-;;###autoload
+;;;###autoload
 (defun treadmill-spawn ()
   "Start a local Gerbil network REPL and connect to it."
   (interactive)
@@ -489,7 +489,7 @@ prompt."
          (treadmill-inserting (treadmill-insert-result result))
          (treadmill-issue-prompt))))))
 
-;;###autoload
+;;;###autoload
 (defun treadmill-connect (host port)
   "Connect to a Gerbil network REPL already running on HOST at PORT."
   (interactive
@@ -706,33 +706,23 @@ position.  Otherwise, function just as MOVE-BEGINNING-OF-LINE."
          (goto-char treadmill-ia-mark))
         (t (move-beginning-of-line n-lines))))
 
-(defvar treadmill-use-company nil
-  "Non-nil if Treadmill is using company for completion.")
+(require 'cl-lib)
 
-(when (boundp 'company-mode)
-  (require 'cl-lib)
-  (defun treadmill-company-backend (command &optional arg &rest _ignored)
-    "Working with Company by evaluating COMMAND, using ARG if approporiate."
-    (interactive (list 'interactive))
-    (cl-case command
-      (interactive (company-begin-backend 'treadmill-company-backend))
-      (prefix (and (or (eq major-mode 'treadmill-mode)
-                       (bound-and-true-p treadmill-gerbil-mode))
-                   (let ((sym (company-grab-symbol)))
-                     (and (> (length sym) 1)
-                          sym))))
-      (candidates (treadmill-complete arg))
-      (meta (treadmill-complete-meta arg))))
-  (add-to-list 'company-backends 'treadmill-company-backend)
-  (add-hook 'treadmill-mode-hook #'company-mode)
-  (setq treadmill-use-company t))
+(defun treadmill-company-backend (command &optional arg &rest _ignored)
+  "Working with Company by evaluating COMMAND, using ARG if approporiate."
+  (interactive (list 'interactive))
+  (cl-case command
+    (interactive (company-begin-backend 'treadmill-company-backend))
+    (prefix (and (or (eq major-mode 'treadmill-mode)
+                     (bound-and-true-p treadmill-gerbil-mode))
+                 (let ((sym (company-grab-symbol)))
+                   (and (> (length sym) 1)
+                        sym))))
+    (candidates (treadmill-complete arg))
+    (meta (treadmill-complete-meta arg))))
+(add-to-list 'company-backends 'treadmill-company-backend)
 
-(defun treadmill-company-mode-maybe ()
-  "Activate company mode if present."
-  (if treadmill-use-company
-      (company-mode)))
-
-;;###autoload
+;;;###autoload
 (defvar treadmill-mode-hook nil
   "Hook for executing code after Treadmill starts.")
 
@@ -748,19 +738,19 @@ position.  Otherwise, function just as MOVE-BEGINNING-OF-LINE."
     map)
   "Key map for Treadmill.")
 
-;;###autoload
+;;;###autoload
 (defun treadmill-mode ()
   "Major mode for interacting with Gerbil."
   (interactive)
   (use-local-map treadmill-mode-map)
   (setq mode-name "Treadmill Interaction")
   (setq major-mode 'treadmill-mode)
-  (treadmill-company-mode-maybe)
+  (company-mode t)
   (make-local-variable 'after-change-functions)
   (add-hook 'after-change-functions 'treadmill-history-reset)
   (run-hooks 'treadmill-mode-hook))
 
-;;###autoload
+;;;###autoload
 (define-minor-mode treadmill-gerbil-mode
   "Mode for talking to Treadmill in Gerbil buffers."
   :lighter " TM"
@@ -772,10 +762,7 @@ position.  Otherwise, function just as MOVE-BEGINNING-OF-LINE."
             (define-key map (kbd "C-M-x") 'treadmill-gerbil-eval-toplevel)
             (define-key map (kbd "C-c m") 'treadmill-gerbil-enter-module)
             map)
-  (treadmill-company-mode-maybe))
-
-;;###autoload
-(add-hook 'gerbil-mode-hook 'treadmill-gerbil-mode)
+  (company-mode t))
 
 (provide 'treadmill)
 
