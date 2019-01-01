@@ -119,7 +119,7 @@ ARG)` if they do not specifically handle an event.
   (e.g. `connected`) are named in the simple past tense.
 
 * Notify events that indicate something _is_ happening
-  (e.g. `quitting) are named in the present continuous tense.
+  (e.g. `quitting`) are named in the present continuous tense.
 
 ## Buffers
 
