@@ -48,6 +48,7 @@
 
 (require 'subr-x)
 
+
 (defvar treadmill-interpreter-name nil
   "Explicit location of the Gerbil interpreter.")
 
@@ -57,12 +58,19 @@
 (defvar treadmill-current-interaction-buffer nil
   "The interaction buffer in which expressions are evaluated.")
 
+;; Public
+
 (defvar-local treadmill-interaction-buffer nil
   "The interaction buffer associate with a particular Gerbil
   source buffer.")
 
 (defvar-local treadmill-current-module nil
   "Current module of an interaction or Gerbil source.")
+
+(defvar-local treadmill-ia-mark nil
+  "The minimum editable mark in an interaction buffer.")
+
+;;; Private
 
 (defvar-local treadmill--spawn-port nil
   "The REPL to connect to as reported by the Gerbil interpreter.")
@@ -78,9 +86,6 @@
 (defvar-local treadmill--repl-process nil
   "The REPL process associated with an interaction buffer.")
 
-(defvar-local treadmill--ia-mark nil
-  "The minimum editable mark in an interaction buffer.")
-
 ;;;###autoload
 (defun treadmill-plugin-null-hook (event arg)
   "The no-op plugin handler."
@@ -89,7 +94,7 @@
         ((eq event 'connected) nil)
         ((eq event 'keymap) nil)
         ((eq event 'gerbil-keymap) nil)
-        (t (warn "Unimplemented event in `treadmill-plugin-null-hook`."))))
+        (t (warn "Unimplemented event in `treadmill-plugin-null-hook`"))))
 
 ;;;###autoload
 (defvar treadmill-plugin-functions nil
@@ -101,7 +106,11 @@
         (arg arg))
     (while hooks
       (let ((proc (car hooks)))
-        (setq arg (funcall proc event arg))
+        (message "got here")
+        (let ((new-arg (funcall proc event arg)))
+          (message "got here*")
+          (setq arg new-arg)
+          (message "got here**"))
         (setq hooks (cdr hooks))))
     arg))
 
@@ -322,7 +331,7 @@ EXPRS are evaluated and the value of POINT afterwards."
   (treadmill--inserting
    (treadmill--propertizing '(face font-lock-builtin-face)
     (insert (format "%s> " (or treadmill-current-module "TOP")))))
-  (setq treadmill--ia-mark (point-max-marker))
+  (setq treadmill-ia-mark (point-max-marker))
   (treadmill--secure-transcript))
 
 (defun treadmill--normalze-module-string (module)
@@ -344,7 +353,7 @@ prompt."
   (interactive "sEnter module: (\"\" for TOP): ")
   (setq treadmill-current-module (treadmill--normalze-module-string module))
   (let ((unsent-input (buffer-substring-no-properties
-                       treadmill--ia-mark (point-max))))
+                       treadmill-ia-mark (point-max))))
     (goto-char (point-max))
     (insert "\n")
     (treadmill-issue-prompt)
@@ -383,104 +392,18 @@ prompt."
          (insert (format "```")))))
     (if values (insert "\n"))))
 
-(defvar-local treadmill--history-buffer nil
-  "Buffer in which history items are stored and retrieved.")
-
-(defvar-local treadmill--input-is-history nil
-  "True is user has not touched interaction input after inserted by history.")
-
-(defvar-local treadmill--history-changing-buffer nil
-  "A semaphore to prevent simultaneous manipulation of the history")
-
-(defun treadmill--history-reset (_b _e _l)
-  "Indicate that input is nonhistorical due to user editing."
-  (when (not treadmill--history-changing-buffer)
-    (setq treadmill--input-is-history nil)
-    (with-current-buffer treadmill--history-buffer (goto-char (point-max)))))
-
-(defun treadmill--history-replace-input (s)
-  "Kill the current input, replacing it with S."
-  (setq treadmill--history-changing-buffer t)
-  (if treadmill--input-is-history
-      (delete-region treadmill--ia-mark (point-max))
-    (kill-region treadmill--ia-mark (point-max)))
-  (insert (string-trim s))
-  (setq treadmill--history-changing-buffer nil)
-  (setq treadmill--input-is-history t))
-
-(defun treadmill--history-advance ()
-  "Move POINT to the next history item in history buffer."
-  (cond ((equal (point) (point-max))    ; nothing to do
-         nil)
-        (t
-         (goto-char (+ (point) 11))
-         (if (search-forward ";;;;;;;;;;\n" nil t)
-             (goto-char (match-beginning 0))
-           (goto-char (point-max))))))
-
-(defun treadmill--history-next ()
-  "Return next history item from history buffer."
-  (with-current-buffer treadmill--history-buffer
-    (treadmill--history-advance)
-    (cond ((equal (point) (point-max))
-           (message "No next history item")
-           "")
-          (t (let ((expr-start (+ (point) 11)))
-               (goto-char expr-start)
-               (if (search-forward-regexp ";;;;;;;;;;\n" nil t)
-                   (let* ((expr-end (match-beginning 0))
-                          (expr (buffer-substring expr-start expr-end)))
-                     (goto-char expr-end)
-                     expr)
-                 (let* ((expr-end (point-max))
-                        (expr (buffer-substring expr-start expr-end)))
-                   (goto-char expr-end)
-                   expr)))))))
-
-(defun treadmill--history-previous ()
-  "Return previous history item from history buffer."
-  (with-current-buffer treadmill--history-buffer
-    (let ((expr-end (point)))
-      (cond ((search-backward-regexp ";;;;;;;;;;\n" nil t)
-             (let* ((expr-start (match-end 0))
-                    (expr (buffer-substring expr-start expr-end)))
-               (goto-char (match-beginning 0))
-               expr))
-            (t (error "No previous history item"))))))
-
-(defun treadmill-ia-history-next ()
-  "Replace the current input with the next history item."
-  (interactive)
-  (let ((h (treadmill--history-next)))
-    (treadmill--history-replace-input h)))
-
-(defun treadmill-ia-history-previous ()
-  "Replace the current input with the previous history item."
-  (interactive)
-  (let ((h (treadmill--history-previous)))
-    (treadmill--history-replace-input h)))
-
-(defun treadmill--push-history-item (input)
-  "Add INPUT to the end of the history buffer and make it current item."
-  (let ((cleaned (string-trim input)))
-    (when (not (string-empty-p cleaned))
-      (with-current-buffer treadmill--history-buffer
-        (goto-char (point-max))
-        (insert ";;;;;;;;;;\n")
-        (insert cleaned)
-        (insert "\n")))))
-
 (defun treadmill-ia-eval ()
   "Evaluate the expression(s) in the current input."
   (interactive)
-  (let ((s (buffer-substring-no-properties treadmill--ia-mark (point-max)))
+  (let ((s (buffer-substring-no-properties treadmill-ia-mark (point-max)))
         (stdin "")
         (b (current-buffer)))
     (goto-char (point-max))
     (treadmill--insert "\n")
-    (treadmill--push-history-item s)
     (treadmill--eval-io-async
-     s stdin treadmill-current-module
+     (treadmill--plugin-fold 'evaluate s)
+     stdin
+     treadmill-current-module
      (lambda (result)
        (with-current-buffer b
          (goto-char (point-max))
@@ -512,8 +435,6 @@ prompt."
               (setq treadmill--repl-process repl-p))
       (switch-to-buffer b)
       (setq treadmill--repl-process repl-p)
-      (setq treadmill--history-buffer
-            (generate-new-buffer "*treadmill-history*"))
       (treadmill--propertizing '(face font-lock-comment-face)
        (insert ";;; Welcome to the Gerbil Treadmill\n"))
       (treadmill--eval1 "(begin (import :thunknyc/apropos) (thread-start! (make-thread (lambda () (current-apropos-db)))))")
@@ -620,8 +541,7 @@ evaluation."
 Delete the current Treadmill interaction buffer and all related
 buffers and processes."
   (interactive)
-  (treadmill--plugin-hook 'quit (current-buffer))
-  (kill-buffer treadmill--history-buffer)
+  (treadmill--plugin-hook 'quitting (current-buffer))
   (with-current-buffer (process-buffer treadmill--repl-process)
     (treadmill--repl-quit))
   (kill-buffer))
@@ -703,8 +623,8 @@ If N-LINES is 1 and the current line contains the interaction
 prompt and POINT is after it, move POINT to the first editable
 position.  Otherwise, function just as MOVE-BEGINNING-OF-LINE."
   (interactive "^p")
-  (cond ((and (eq n-lines 1) (> (point) treadmill--ia-mark))
-         (goto-char treadmill--ia-mark))
+  (cond ((and (eq n-lines 1) (> (point) treadmill-ia-mark))
+         (goto-char treadmill-ia-mark))
         (t (move-beginning-of-line n-lines))))
 
 (require 'cl-lib)
@@ -733,8 +653,6 @@ position.  Otherwise, function just as MOVE-BEGINNING-OF-LINE."
     (define-key map (kbd "C-c C-z") 'treadmill-ia-switch)
     (define-key map (kbd "C-c m") 'treadmill-ia-enter-module)
     (define-key map (kbd "C-c q") 'treadmill-ia-quit)
-    (define-key map (kbd "M-p") 'treadmill-ia-history-previous)
-    (define-key map (kbd "M-n") 'treadmill-ia-history-next)
     (define-key map (kbd "C-a") 'treadmill-move-beginning-of-line)
     (treadmill--plugin-fold 'keymap map)
     map)
@@ -749,7 +667,6 @@ position.  Otherwise, function just as MOVE-BEGINNING-OF-LINE."
   (setq major-mode 'treadmill-mode)
   (company-mode t)
   (make-local-variable 'after-change-functions)
-  (add-hook 'after-change-functions 'treadmill--history-reset)
   (run-hooks 'treadmill-mode-hook))
 
 ;;;###autoload

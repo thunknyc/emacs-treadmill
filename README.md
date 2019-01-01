@@ -104,9 +104,19 @@ ARG)` if they do not specifically handle an event.
 | --- | --- | --- |
 | `command` | Filter | gxi command line arguments (ARG). |
 | `connected` | Notify | Interaction buffer (ARG) connected to network REPL. |
-| `quit` | Notify | Interaction buffer (ARG) about to quit. |
+| `quitting` | Notify | Interaction buffer (ARG) about to quit. |
 | `keymap` | Notify | Interaction buffer keymap (ARG). |
 | `gerbil-keymap` | Notify | Gerbil Treadmill buffer keymap (ARG). |
+
+### A note on grammar
+
+* Filters events are nouns (e.g. `command`) -- what the filter is operating on.
+
+* Notify events that indicate something _has_ happened
+  (e.g. `connected`) are named in the simple past tense.
+
+* Notify events that indicate something _is_ happening
+  (e.g. `quitting) are named in the present continuous tense.
 
 ## Buffers
 
