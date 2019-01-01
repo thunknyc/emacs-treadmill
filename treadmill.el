@@ -190,7 +190,7 @@ TREADMILL-INTERPRETER-NAME."
 (defvar-local treadmill--repl-error-level nil
   "Depth of error level in the network REPL.")
 
-(defun treadmil--repl-value ()
+(defun treadmill--repl-value ()
   "Extract result value from network REPL buffer."
   (goto-char (point-max))
   (when (search-backward-regexp "\r\n\\([0-9]*\\)> " nil t)
@@ -225,7 +225,7 @@ evaluation result."
             (goto-char (point-max))
             (when (search-backward-regexp "\r\n[0-9]*> " nil t)
               (setq treadmill--repl-awaiting-value nil)
-              (let ((result (string-trim (treadmil--repl-value))))
+              (let ((result (string-trim (treadmill--repl-value))))
                 (when (not (zerop (length result)))
                   (funcall proc result))))))))))
 
@@ -252,7 +252,7 @@ standard out, and stdandard error."
           (goto-char (point-max))
           (when (search-backward-regexp "\r\n[0-9]*> " nil t)
             (setq treadmill--repl-awaiting-value nil)
-            (let ((result (string-trim (treadmil--repl-value))))
+            (let ((result (string-trim (treadmill--repl-value))))
               (when (not (zerop (length result)))
                 (funcall proc (read result))))))))))
 
@@ -556,7 +556,7 @@ display the resulting values in the message area."
         (g-b (current-buffer)))
     (if-let ((ia-b (and treadmill-current-interaction-buffer
                         (get-buffer treadmill-current-interaction-buffer))))
-        (let* ((module (treadmill-gerbil-current-module)))
+        (let ((module (treadmill-gerbil-current-module)))
           (with-current-buffer ia-b
             (treadmill--eval-io-async
              sexp "" module
