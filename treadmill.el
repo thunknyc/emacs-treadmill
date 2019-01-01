@@ -401,7 +401,7 @@ prompt."
     (goto-char (point-max))
     (treadmill--insert "\n")
     (treadmill--eval-io-async
-     (treadmill--plugin-fold 'evaluating s)
+     (treadmill--plugin-fold 'expression s)
      stdin
      treadmill-current-module
      (lambda (result)
