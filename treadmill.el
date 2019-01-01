@@ -148,7 +148,6 @@ if a package file is found."
 
 (defun treadmill-gerbil-current-module ()
   "Return the module associated with the Gerbil buffer."
-  (interactive)
   (cond ((bound-and-true-p treadmill-current-module)
          treadmill-current-module)
         ((not (buffer-file-name))
@@ -334,19 +333,19 @@ EXPRS are evaluated and the value of POINT afterwards."
   (setq treadmill-ia-mark (point-max-marker))
   (treadmill--secure-transcript))
 
-(defun treadmill--normalze-module-string (module)
+(defun treadmill--normalize-module-string (module)
   "Return a string representation of MODULE.
 
 Returned string is suitable for display in the interaction
 prompt."
-  (cond ((equal module "TOP") nil)
-        ((> (length module) 0) module)
-        (nil)))
+  (cond ((equal module "TOP") -1)
+        ((string-empty-p module) -1)
+        (t module)))
 
 (defun treadmill-gerbil-enter-module (module)
   "Use MODULE when evaluating the current buffer."
   (interactive "sEnter module: (\"\" for TOP): ")
-  (setq treadmill-current-module (treadmill--normalze-module-string module)))
+  (setq treadmill-current-module (treadmill--normalize-module-string module)))
 
 (defun treadmill-ia-enter-module (module)
   "Use MODULE when evaluated expressions."
@@ -501,9 +500,9 @@ a no-value result hangs this procedure."
 
 (defun treadmill--module-string (mod)
   "Return module string for MOD suitable for use by evaluation procedures."
-  (if mod
-      (format "'%s" mod)
-      "#f"))
+  (cond ((eq mod -1) "#f")
+        ((null mod) "#f")
+        (t (format "'%s" mod))))
 
 (defun treadmill--eval-io-async (expr-string input-string module completion)
   "Evaluate EXPR-STRING with INPUT-STRING as standard input.
