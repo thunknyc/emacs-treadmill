@@ -132,7 +132,7 @@
         ((eq e 'quitting)
          (kill-buffer treadmill-history--buffer))
 
-        ((eq e 'evaluate)
+        ((eq e 'expression)
          (treadmill-history--push-item arg)
          arg)
 

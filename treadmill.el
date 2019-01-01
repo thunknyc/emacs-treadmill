@@ -91,11 +91,12 @@
   "The no-op plugin handler."
   (cond ((eq event 'command) arg)
         ((eq event 'keymap) arg)
+        ((eq event 'expression) arg)
         ((eq event 'gerbil-keymap) arg)
         ((eq event 'connected) nil)
         ((eq event 'quitting) nil)
         (t
-         (warn "Unimplemented event %s in `treadmill-plugin-null-hook`"
+         (warn "Unimplemented event `%s' in `treadmill-plugin-null-hook`"
                event))))
 
 ;;;###autoload
@@ -400,7 +401,7 @@ prompt."
     (goto-char (point-max))
     (treadmill--insert "\n")
     (treadmill--eval-io-async
-     (treadmill--plugin-fold 'evaluate s)
+     (treadmill--plugin-fold 'evaluating s)
      stdin
      treadmill-current-module
      (lambda (result)

@@ -106,6 +106,7 @@ ARG)` if they do not specifically handle an event.
 | --- | --- | --- |
 | `command` | Filter | gxi command line arguments (ARG). |
 | `keymap` | Filter | Interaction buffer keymap (ARG). |
+| `expression` | Filter | Expression (ARG) entered in interaction buffer to be evaluated.  |
 | `gerbil-keymap` | Filter | Gerbil Treadmill buffer keymap (ARG). |
 | `connected` | Notify | Interaction buffer (ARG) connected to network REPL. |
 | `quitting` | Notify | Interaction buffer (ARG) about to quit. |
