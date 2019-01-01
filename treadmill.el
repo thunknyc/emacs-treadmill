@@ -563,7 +563,10 @@ display the resulting values in the message area."
              (lambda (val)
                (if arg
                    (with-current-buffer g-b (insert (format "%s" (car val))))
-                 (message "=> %s" (car val)))))))
+                 (if-let ((stderr (caddr val))
+                          (stderr-present (not (string-empty-p stderr))))
+                     (message "Error: %s" stderr)
+                     (message "=> %s" (car val))))))))
       (error "Treadmill: No current interaction buffer"))))
 
 (defun treadmill-gerbil-eval-last (arg)
