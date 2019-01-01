@@ -92,8 +92,8 @@
   (cond ((eq event 'command) arg)
         ((eq event 'quit) nil)
         ((eq event 'connected) nil)
-        ((eq event 'keymap) nil)
-        ((eq event 'gerbil-keymap) nil)
+        ((eq event 'keymap) arg)
+        ((eq event 'gerbil-keymap) arg)
         (t (warn "Unimplemented event in `treadmill-plugin-null-hook`"))))
 
 ;;;###autoload
@@ -654,8 +654,7 @@ position.  Otherwise, function just as MOVE-BEGINNING-OF-LINE."
     (define-key map (kbd "C-c m") 'treadmill-ia-enter-module)
     (define-key map (kbd "C-c q") 'treadmill-ia-quit)
     (define-key map (kbd "C-a") 'treadmill-move-beginning-of-line)
-    (treadmill--plugin-fold 'keymap map)
-    map)
+    (treadmill--plugin-fold 'keymap map))
   "Key map for Treadmill.")
 
 ;;;###autoload
@@ -680,8 +679,7 @@ position.  Otherwise, function just as MOVE-BEGINNING-OF-LINE."
             (define-key map (kbd "C-c C-z") 'treadmill-gerbil-switch)
             (define-key map (kbd "C-M-x") 'treadmill-gerbil-eval-toplevel)
             (define-key map (kbd "C-c m") 'treadmill-gerbil-enter-module)
-            (treadmill--plugin-fold 'gerbil-keymap map)
-            map)
+            (treadmill--plugin-fold 'gerbil-keymap map))
   (company-mode t))
 
 (require 'treadmill-history)
