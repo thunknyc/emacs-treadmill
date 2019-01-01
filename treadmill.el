@@ -618,21 +618,21 @@ position.  Otherwise, function just as MOVE-BEGINNING-OF-LINE."
 (defvar treadmill-mode-hook nil
   "Hook for executing code after Treadmill starts.")
 
-(defvar treadmill-mode-map
+(defun treadmill--make-mode-map ()
+  "Construct Treadmill mode map, including plugins' bindings."
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET") 'treadmill-ia-eval)
     (define-key map (kbd "C-c C-z") 'treadmill-ia-switch)
     (define-key map (kbd "C-c m") 'treadmill-ia-enter-module)
     (define-key map (kbd "C-c q") 'treadmill-ia-quit)
     (define-key map (kbd "C-a") 'treadmill-move-beginning-of-line)
-    (treadmill--plugin-fold 'keymap map))
-  "Key map for Treadmill.")
+    (treadmill--plugin-fold 'keymap map)))
 
 ;;;###autoload
 (defun treadmill-mode ()
   "Major mode for interacting with Gerbil."
   (interactive)
-  (use-local-map treadmill-mode-map)
+  (use-local-map (treadmill--make-mode-map))
   (setq mode-name "Treadmill Interaction")
   (setq major-mode 'treadmill-mode)
   (company-mode t)
