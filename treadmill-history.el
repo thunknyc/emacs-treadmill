@@ -36,17 +36,23 @@
 (defvar-local treadmill-history--input-is-history nil
   "True is user has not touched interaction input after inserted by history.")
 
+(defvar-local treadmill-history--changing-buffer nil
+  "Flag to prevent simultaneous manipulation of the history.")
+
 (defun treadmill-history--reset (_b _e _l)
   "Indicate that input is nonhistorical due to user editing."
-  (setq treadmill-history--input-is-history nil)
-  (with-current-buffer treadmill-history--buffer (goto-char (point-max))))
+  (when (not treadmill-history--changing-buffer)
+    (setq treadmill-history--input-is-history nil)
+    (with-current-buffer treadmill-history--buffer (goto-char (point-max)))))
 
 (defun treadmill-history--replace-input (s)
   "Kill the current input, replacing it with S."
+  (setq treadmill-history--changing-buffer t)
   (if treadmill-history--input-is-history
       (delete-region treadmill-ia-mark (point-max))
     (kill-region treadmill-ia-mark (point-max)))
   (insert (string-trim s))
+  (setq treadmill-history--changing-buffer nil)
   (setq treadmill-history--input-is-history t))
 
 (defun treadmill-history--advance ()

@@ -106,11 +106,8 @@
         (arg arg))
     (while hooks
       (let ((proc (car hooks)))
-        (message "got here")
         (let ((new-arg (funcall proc event arg)))
-          (message "got here*")
-          (setq arg new-arg)
-          (message "got here**"))
+          (setq arg new-arg))
         (setq hooks (cdr hooks))))
     arg))
 
