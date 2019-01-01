@@ -85,7 +85,11 @@
 (defun treadmill-plugin-null-hook (event arg)
   "The no-op plugin handler."
   (cond ((eq event 'command) arg)
-        (t nil)))
+        ((eq event 'quit) nil)
+        ((eq event 'connected) nil)
+        ((eq event 'keymap) nil)
+        ((eq event 'gerbil-keymap) nil)
+        (t (warn "Unimplemented event in `treadmill-plugin-null-hook`."))))
 
 ;;;###autoload
 (defvar treadmill-plugin-functions nil
