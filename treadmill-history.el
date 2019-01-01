@@ -30,8 +30,6 @@
 
 ;;; Code:
 
-(require 'treadmill)
-
 (defvar-local treadmill-history--buffer nil
   "Buffer in which history items are stored and retrieved.")
 

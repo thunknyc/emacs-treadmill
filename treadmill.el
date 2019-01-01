@@ -684,6 +684,8 @@ position.  Otherwise, function just as MOVE-BEGINNING-OF-LINE."
             map)
   (company-mode t))
 
+(require 'treadmill-history)
+
 (provide 'treadmill)
 
 ;;; treadmill.el ends here
