@@ -1,12 +1,12 @@
 ;;; treadmill-history.el --- History facility for Treadmill -*- lexical-binding: t -*-
 
-;; Copyright © 2018 Thunk NYC Corp.
+;; Copyright © 2018-9 Thunk NYC Corp.
 ;;
 ;; Author: Edwin Watkeys <edw@poseur.com>
 
 ;;; License:
 
-;; Copyright © 2018 Thunk NYC Corp.
+;; Copyright © 2018-9 Thunk NYC Corp.
 
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
