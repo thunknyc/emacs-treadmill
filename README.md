@@ -5,8 +5,8 @@
 ## Introduction
 
 [Gerbil](https://cons.io) is a great [Scheme](https://schemers.org)
-and it deserves a great development environment. While you're waiting
-for someone to create it, you can use Treadmill.
+and it deserves a great programming environment. While you're waiting
+for someone to create it, feel free to use Treadmill.
 
 Treadmill is shamelessly modelled on
 [CIDER](https://cider.readthedocs.io/en/latest/), the Clojure
@@ -22,9 +22,12 @@ proper. This allows front end features to have the in-process code
 they need to function without requiring users to painstakingly
 configure each side of the connection separately.
 
-It is my goal that Treadmill allows members of the community the
-Gerbil community innovate without incurring the friction of
-coordinating.
+Currently the history facility is implemented as a plugin, and
+whenever suitable, bundled features will be implemented as plugins. It
+is my goal that Treadmill allows members of the community the Gerbil
+community innovate without incurring the friction of coordinating, and
+the discipline of implementing bundled features as plugins ensures
+that I attend to the needs of plugin writers.
 
 ## Installation
 

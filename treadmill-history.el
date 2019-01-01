@@ -119,9 +119,7 @@
 
 (defun treadmill-history-plugin-proc (e arg)
   "Process Treadmill event E with arg ARG."
-  (message "Calling treadmill history plugin proc %s %s" e arg)
   (cond ((eq e 'keymap)
-         (message "adding keys for history")
          (define-key arg (kbd "M-p") 'treadmill-history-ia-previous)
          (define-key arg (kbd "M-n") 'treadmill-history-ia-next)
          arg)
