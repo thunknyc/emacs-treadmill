@@ -104,6 +104,9 @@ ARG)` if they do not specifically handle an event.
 | --- | --- | --- |
 | `command` | Filter | gxi command line arguments (ARG). |
 | `connected` | Notify | Interaction buffer (ARG) connected to network REPL. |
+| `quit` | Notify | Interaction buffer (ARG) about to quit. |
+| `keymap` | Filter | Interaction buffer keymap (ARG). |
+| `gerbil-keymap` | Filter | Gerbil Treadmill buffer keymap (ARG). |
 
 ## Buffers
 

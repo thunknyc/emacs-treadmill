@@ -616,6 +616,7 @@ evaluation."
 Delete the current Treadmill interaction buffer and all related
 buffers and processes."
   (interactive)
+  (treadmill--plugin-hook 'quit (current-buffer))
   (kill-buffer treadmill--history-buffer)
   (with-current-buffer (process-buffer treadmill--repl-process)
     (treadmill--repl-quit))
@@ -731,6 +732,7 @@ position.  Otherwise, function just as MOVE-BEGINNING-OF-LINE."
     (define-key map (kbd "M-p") 'treadmill-ia-history-previous)
     (define-key map (kbd "M-n") 'treadmill-ia-history-next)
     (define-key map (kbd "C-a") 'treadmill-move-beginning-of-line)
+    (treadmill--plugin-fold 'keymap map)
     map)
   "Key map for Treadmill.")
 
@@ -757,6 +759,7 @@ position.  Otherwise, function just as MOVE-BEGINNING-OF-LINE."
             (define-key map (kbd "C-c C-z") 'treadmill-gerbil-switch)
             (define-key map (kbd "C-M-x") 'treadmill-gerbil-eval-toplevel)
             (define-key map (kbd "C-c m") 'treadmill-gerbil-enter-module)
+            (treadmill--plugin-fold 'gerbil-keymap map)
             map)
   (company-mode t))
 
