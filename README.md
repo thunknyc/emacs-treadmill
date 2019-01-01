@@ -20,14 +20,13 @@ the interpreter command line or evaluation of expressions after
 connection can be accomodated without changes to Treadmill
 proper. This allows front end features to have the in-process code
 they need to function without requiring users to painstakingly
-configure each side of the connection separately.
+configure the Emacs and Gerbil sides of the connection separately.
 
-Currently the history facility is implemented as a plugin, and
-whenever suitable, bundled features will be implemented as plugins. It
-is my goal that Treadmill allows members of the community the Gerbil
-community innovate without incurring the friction of coordinating, and
-the discipline of implementing bundled features as plugins ensures
-that I attend to the needs of plugin writers.
+Non-core bundled features -- i.e. history and completion -- are
+implemented as plugins. It is my goal that Treadmill allow members of
+the Gerbil community to introduce features without having to modify
+Treadmill's source. Implementing bundled features as plugins instills
+discipline and cultivates empathy for plugin writers.
 
 ## Installation
 

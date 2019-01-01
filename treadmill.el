@@ -1,6 +1,6 @@
 ;;; treadmill.el --- Development environment for Gerbil Scheme -*- lexical-binding: t -*-
 
-;; Copyright © 2018 Thunk NYC Corp.
+;; Copyright © 2018-9 Thunk NYC Corp.
 ;;
 ;; Author: Edwin Watkeys <edw@poseur.com>
 ;;
@@ -22,7 +22,7 @@
 
 ;;; License:
 
-;; Copyright © 2018 Thunk NYC Corp.
+;; Copyright © 2018-9 Thunk NYC Corp.
 
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -434,7 +434,6 @@ prompt."
       (setq treadmill--repl-process repl-p)
       (treadmill--propertizing '(face font-lock-comment-face)
        (insert ";;; Welcome to the Gerbil Treadmill\n"))
-      (treadmill--eval1 "(begin (import :thunknyc/apropos) (thread-start! (make-thread (lambda () (current-apropos-db)))))")
       (treadmill-issue-prompt)
       (treadmill-mode)
       (treadmill--plugin-hook 'connected b))))
@@ -451,7 +450,7 @@ prompt."
                           :filter 'treadmill--spawn-filter)))
     (with-current-buffer b (setq treadmill--spawn-process p))))
 
-(defun treadmill--eval1-async (s completion)
+(defun treadmill-eval1-async (s completion)
   "Evaluate S in network REPL and invoke COMPLETION when done."
   (let ((p treadmill--repl-process))
     (with-current-buffer (process-buffer p)
@@ -477,7 +476,7 @@ prompt."
 (defvar-local treadmill--eval-value nil
   "Value of last blocking network REPL evaluation.")
 
-(defun treadmill--eval1 (s)
+(defun treadmill-eval1 (s)
   "Evaluate single expression S in network REPL.
 
 Evaluate S synchronously (i.e. by blocking) without exception
@@ -487,7 +486,7 @@ a no-value result hangs this procedure."
   (treadmill--with-connection
    (setq treadmill--eval-waiting t)
      (let ((b (current-buffer)))
-       (treadmill--eval1-async
+       (treadmill-eval1-async
         s
         (lambda (val)
           (with-current-buffer b
@@ -601,18 +600,6 @@ otherwise display the results in the message area."
     (switch-to-buffer (get-buffer treadmill-current-interaction-buffer))
     (setq treadmill--switch-last-buffer b)))
 
-(defun treadmill--complete (prefix)
-  "Return completion candidates for symbol PREFIX using network REPL."
-  (let ((expr (format "(complete \"^%s\")" prefix)))
-    (read (treadmill--eval1 expr))))
-
-(defun treadmill--complete-meta (name)
-  "Return completion metadata for NAME using network REPL."
-  (let ((meta
-         (read (treadmill--eval1 (format "(completion-meta \"%s\")" name)))))
-    (if meta (format "Modules: %s" (string-join meta " "))
-      (format "No information for %s" name))))
-
 (defun treadmill-move-beginning-of-line (n-lines)
   "Move to the beginning of current line.
 
@@ -623,22 +610,6 @@ position.  Otherwise, function just as MOVE-BEGINNING-OF-LINE."
   (cond ((and (eq n-lines 1) (> (point) treadmill-ia-mark))
          (goto-char treadmill-ia-mark))
         (t (move-beginning-of-line n-lines))))
-
-(require 'cl-lib)
-
-(defun treadmill--company-backend (command &optional arg &rest _ignored)
-  "Working with Company by evaluating COMMAND, using ARG if approporiate."
-  (interactive (list 'interactive))
-  (cl-case command
-    (interactive (company-begin-backend 'treadmill-company-backend))
-    (prefix (and (or (eq major-mode 'treadmill-mode)
-                     (bound-and-true-p treadmill-gerbil-mode))
-                 (let ((sym (company-grab-symbol)))
-                   (and (> (length sym) 1)
-                        sym))))
-    (candidates (treadmill--complete arg))
-    (meta (treadmill--complete-meta arg))))
-(add-to-list 'company-backends 'treadmill--company-backend)
 
 ;;;###autoload
 (defvar treadmill-mode-hook nil
@@ -679,6 +650,7 @@ position.  Otherwise, function just as MOVE-BEGINNING-OF-LINE."
             (treadmill--plugin-fold 'gerbil-keymap map))
   (company-mode t))
 
+(require 'treadmill-complete)
 (require 'treadmill-history)
 
 (provide 'treadmill)
