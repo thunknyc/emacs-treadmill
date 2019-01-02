@@ -326,7 +326,7 @@ prompt."
         (stderr (caddr result)))
     (treadmill--propertizing
      '(face font-lock-keyword-face)
-     (insert (if (null values) "" (format "%s" values))))
+     (insert (string-join (mapcar (lambda (v) (format "%s" v)) values) "\n")))
     (if (string-empty-p stdout) ""
       (progn
         (treadmill--propertizing
@@ -523,11 +523,19 @@ display the resulting values in the message area."
              sexp "" module
              (lambda (val)
                (if arg
-                   (with-current-buffer g-b (insert (format "%s" (car val))))
+                   (with-current-buffer g-b
+                     (insert
+                      (string-join
+                       (mapcar (lambda (v) (format "%s" v)) (car val))
+                       " ")))
                  (if-let ((stderr (caddr val))
                           (stderr-present (not (string-empty-p stderr))))
                      (message "Error: %s" stderr)
-                     (message "=> %s" (car val))))))))
+                   (message "%s"
+                            (string-join (mapcar (lambda (v)
+                                                   (format "=> %s" v))
+                                                 (car val))
+                                         "\n"))))))))
       (error "Treadmill: No current interaction buffer"))))
 
 (defun treadmill-gerbil-eval-last (arg)
