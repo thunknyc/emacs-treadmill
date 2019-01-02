@@ -37,7 +37,7 @@ and put it in your Emacs load path. After you do that, stick this in
 your `.emacs.d/init.el`, `.emacs`, or whatever:
 
 ```
-(require 'treadmill) ; will not be requires with MELPA package
+(require 'treadmill) ; will not be required with MELPA package
 (add-hook 'gerbil-mode-hook #'treadmill-gerbil-mode)
 
 ```
