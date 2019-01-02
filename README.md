@@ -1,6 +1,6 @@
 # Treadmill: Gerbil-Emacs Networked REPL Environment
 
-![Gerbil Screenshot](/doc/screenshot.png?raw=true "Gerbil in action, New Year's Eve, 2018")
+![Gerbil Screenshot](/doc/screenshot.png?raw=true "Gerbil in action, watching Blade Runner 2049 with a bottle of Johnnie Walker, January 2, 2019.")
 
 ## Introduction
 
