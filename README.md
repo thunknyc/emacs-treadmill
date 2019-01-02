@@ -51,6 +51,10 @@ Treadmill finds `gxi`, the Gerbil interpreter, using the `GERBIL_HOME`
 environment variable. You can override this behavior by setting
 `treadmill-interpreter-name`.
 
+Currently, Treadmill requires a feature in Gerbil v0.15, which is
+unnreleased as of this writing (2019-01-02). Building Gerbil from the
+head of the master branch of the GitHub repository is generally safe.
+
 ## Usage
 
 `M-x treadmill-spawn`
