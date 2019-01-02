@@ -200,39 +200,21 @@ TREADMILL-INTERPRETER-NAME."
         (setq treadmill--repl-error-level (string-to-number error-level)))
       (buffer-substring 1 (- (point-max) (length prompt))))))
 
-(defun treadmill--lowlevel-completion-filter (proc)
-  "Construct a lowlevel evaluation REPL process filter.
-
-Returns a filter that executes PROC on the single returned
-evaluation result."
-  (let ((proc proc))
-    (lambda (p s)
-      ;; Boilerplate
-      (when (buffer-live-p (process-buffer p))
-        (with-current-buffer (process-buffer p)
-          (let ((moving (= (point) (process-mark p))))
-            (save-excursion
-              ;; Insert the text, advancing the process marker.
-              (goto-char (process-mark p))
-              (insert s)
-              (set-marker (process-mark p) (point)))
-            (if moving (goto-char (process-mark p))))))
-      ;; Not boilerplate
-      (with-current-buffer (process-buffer p)
-        (when treadmill--repl-awaiting-value
-          (save-excursion
-            (goto-char (point-max))
-            (when (search-backward-regexp "\r\n[0-9]*> " nil t)
-              (setq treadmill--repl-awaiting-value nil)
-              (let ((result (string-trim (treadmill--repl-value))))
-                (when (not (zerop (length result)))
-                  (funcall proc result))))))))))
+(defun treadmill--extract-result ()
+  "Return a true value when buffer contains a well-formatted result."
+  (with-current-buffer (get-buffer "reply-example")
+    (goto-char (point-min))
+    (let ((bom (search-forward-regexp "^|\\([-0-9a-fA-F]\\{36\\}\\)>>" 40 t)))
+      (when bom
+        (goto-char (max (- (point-max) 48) 1))
+        (let* ((sentinel (match-string 1))
+               (eom-pat (format "<<%s|[\r\n]+[0-9]*> " sentinel))
+               (eom (search-forward-regexp eom-pat nil t)))
+          (when eom
+            (buffer-substring-no-properties 40 (match-beginning 0))))))))
 
 (defun treadmill--repl-completion-filter (proc)
-  "Construct an evaluation REPL process filter.
-
-Returns a filter that executes PROC on all returned values,
-standard out, and stdandard error."
+  "Construct an evaluation REPL process filter."
   (lambda (p s)
     ;; Boilerplate
     (when (buffer-live-p (process-buffer p))
@@ -246,14 +228,8 @@ standard out, and stdandard error."
           (if moving (goto-char (process-mark p))))))
     ;; Not boilerplate
     (with-current-buffer (process-buffer p)
-      (when treadmill--repl-awaiting-value
-        (save-excursion
-          (goto-char (point-max))
-          (when (search-backward-regexp "\r\n[0-9]*> " nil t)
-            (setq treadmill--repl-awaiting-value nil)
-            (let ((result (string-trim (treadmill--repl-value))))
-              (when (not (zerop (length result)))
-                (funcall proc (read result))))))))))
+      (when-let ((result (treadmill--extract-result)))
+          (funcall proc (read result))))))
 
 (defun treadmill--spawn-filter (p s)
   "Gerbil interpreter spawn filter function.
@@ -398,7 +374,7 @@ prompt."
         (stdin "")
         (b (current-buffer)))
     (goto-char (point-max))
-    (treadmill--insert "\n")
+    (treadmill--inseort "\n")
     (treadmill--eval-io-async
      (treadmill--plugin-fold 'expression s)
      stdin
@@ -459,8 +435,8 @@ prompt."
       (erase-buffer)
       (setq treadmill--repl-awaiting-value t)
       (set-process-filter
-       p (treadmill--lowlevel-completion-filter completion))
-      (process-send-string p (format "%s\n" s)))))
+       p (treadmill--repl-completion-filter completion))
+      (process-send-string p (format "(eval/sentinel %s)\n" s)))))
 
 (defmacro treadmill--with-connection (&rest exprs)
   "Evalutate EXPRS in context where network REPL process is accessible."
@@ -516,7 +492,7 @@ evaluation."
       (erase-buffer)
       (setq treadmill--repl-awaiting-value t)
       (set-process-filter p (treadmill--repl-completion-filter completion))
-      (let ((s (format "(eval-string/input-string %S %S %s)\n"
+      (let ((s (format "(eval/sentinel (eval-string/input-string %S %S %s))\n"
                        expr-string input-string
                        (treadmill--module-string module))))
         (process-send-string p s)))))
