@@ -151,7 +151,8 @@ if a package file is found."
   (cond ((bound-and-true-p treadmill-current-module)
          treadmill-current-module)
         ((not (buffer-file-name))
-         (warn "No module name for Gerbil unsaved buffer"))
+         (warn "No module name for Gerbil unsaved buffer")
+         treadmill-current-module)
         (t (let* ((fname (buffer-file-name))
                   (module-leaf (file-name-sans-extension
                                 (file-name-nondirectory fname)))
