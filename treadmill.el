@@ -14,10 +14,10 @@
 ;; Provides an interaction buffer and a minor-mode for Gerbil Scheme
 ;; code.
 
-;; Start a Gerbil network repl and connect:
+;; Start a Gerbil network REPL and connect:
 ;; M-x treadmill-spawn
 
-;; Connect to an existing Gerbil network repl:
+;; Connect to an existing Gerbil network REPL:
 ;; M-x treadmill-connect
 
 ;;; License:
@@ -186,32 +186,17 @@ TREADMILL-INTERPRETER-NAME."
   (list (treadmill--gxi-location)
         "-e" "(import :thunknyc/treadmill) (start-treadmill!)"))
 
-(defvar-local treadmill--repl-error-level nil
-  "Depth of error level in the network REPL.")
-
-(defun treadmill--repl-value ()
-  "Extract result value from network REPL buffer."
-  (goto-char (point-max))
-  (when (search-backward-regexp "\r\n\\([0-9]*\\)> " nil t)
-    (let ((prompt (match-string 0))
-          (error-level (match-string 1)))
-      (if (string-empty-p error-level)
-          (setq treadmill--repl-error-level nil)
-        (setq treadmill--repl-error-level (string-to-number error-level)))
-      (buffer-substring 1 (- (point-max) (length prompt))))))
-
 (defun treadmill--extract-result ()
   "Return a true value when buffer contains a well-formatted result."
-  (with-current-buffer (get-buffer "reply-example")
-    (goto-char (point-min))
-    (let ((bom (search-forward-regexp "^|\\([-0-9a-fA-F]\\{36\\}\\)>>" 40 t)))
-      (when bom
-        (goto-char (max (- (point-max) 48) 1))
-        (let* ((sentinel (match-string 1))
-               (eom-pat (format "<<%s|[\r\n]+[0-9]*> " sentinel))
-               (eom (search-forward-regexp eom-pat nil t)))
-          (when eom
-            (buffer-substring-no-properties 40 (match-beginning 0))))))))
+  (goto-char (point-min))
+  (let ((bom (search-forward-regexp "^\\(> \\)\\{0,1\\}|\\([-0-9a-fA-F]\\{36\\}\\)>>" 42 t)))
+    (when bom
+      (goto-char (max (- (point-max) 48) 1))
+      (let* ((sentinel (match-string 2))
+             (eom-pat (format "<<%s|[\r\n]+[0-9]*> " sentinel))
+             (eom (search-forward-regexp eom-pat nil t)))
+        (when eom
+          (buffer-substring-no-properties 40 (match-beginning 0)))))))
 
 (defun treadmill--repl-completion-filter (proc)
   "Construct an evaluation REPL process filter."
@@ -229,7 +214,7 @@ TREADMILL-INTERPRETER-NAME."
     ;; Not boilerplate
     (with-current-buffer (process-buffer p)
       (when-let ((result (treadmill--extract-result)))
-          (funcall proc (read result))))))
+        (funcall proc (read result))))))
 
 (defun treadmill--spawn-filter (p s)
   "Gerbil interpreter spawn filter function.
@@ -253,11 +238,11 @@ connect to."
       (save-excursion
         (goto-char 0)
         (when (search-forward-regexp
-               "Running net repl on port \\([0-9]+\\)."
+               "Running network REPL on port \\([0-9]+\\)."
                nil t)
           (let ((port (string-to-number (match-string 1))))
             (setq treadmill--spawn-port port)
-            (message "Net repl starting on port %d" port)
+            (message "Network REPL starting on port %d" port)
             (treadmill-connect "127.0.0.1" port)))))))
 
 (defun treadmill--secure-transcript ()
@@ -374,7 +359,7 @@ prompt."
         (stdin "")
         (b (current-buffer)))
     (goto-char (point-max))
-    (treadmill--inseort "\n")
+    (treadmill--insert "\n")
     (treadmill--eval-io-async
      (treadmill--plugin-fold 'expression s)
      stdin
@@ -392,6 +377,7 @@ prompt."
    "sConnect to network REPL at host: \nsREPL port on %s: \n")
   (let* ((repl-b (generate-new-buffer "*treadmill-repl*"))
          (repl-p (open-network-stream "treadmill-repl"
+
                                       repl-b host port)))
     ;; If treadmill--spawn-process is defined it means we're in the
     ;; spawn buffer and we should connect the spawn buffer with the
@@ -402,7 +388,7 @@ prompt."
         (setq treadmill--repl-process repl-p)
         (with-current-buffer repl-b
           (setq treadmill--spawn-process spawn-process))))
-    (message "Connected to repl on port %d" port)
+    (message "Connected to network REPL on port %d" port)
     (let ((b (generate-new-buffer "*treadmill*")))
       (setq treadmill-current-interaction-buffer (buffer-name b))
       (with-current-buffer repl-b
