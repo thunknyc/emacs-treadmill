@@ -44,7 +44,7 @@
 (defun treadmill-complete--complete (prefix)
   "Return completion candidates for symbol PREFIX using network REPL."
   (let ((expr (format "(complete \"^%s\")" prefix)))
-    (read (treadmill-eval1 expr))))
+    (treadmill-eval1 expr)))
 
 (defun treadmill-complete--company-backend
     (command &optional arg &rest _ignored)
@@ -67,7 +67,8 @@
          (treadmill-eval1
           "(begin (import :thunknyc/apropos)
                   (thread-start! (make-thread (lambda ()
-                                                (current-apropos-db)))))"))
+                                                (current-apropos-db))))
+                  'started)"))
 
         (t (treadmill-plugin-null-hook e arg))))
 
