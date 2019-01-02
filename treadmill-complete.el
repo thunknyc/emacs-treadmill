@@ -37,7 +37,7 @@
 (defun treadmill-complete--symbol-meta (name)
   "Return completion metadata for NAME using network REPL."
   (let ((meta
-         (read (treadmill-eval1 (format "(completion-meta \"%s\")" name)))))
+         (treadmill-eval1 (format "(completion-meta \"%s\")" name))))
     (if meta (format "Modules: %s" (string-join meta " "))
       (format "No information for %s" name))))
 
