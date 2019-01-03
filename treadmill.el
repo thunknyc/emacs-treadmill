@@ -285,6 +285,34 @@ EXPRS are evaluated and the value of POINT afterwards."
        (add-text-properties ,beg (point) ,properties)
        ,result)))
 
+(defun treadmill-ia-propertized-message (properties msg &rest args)
+  "Issue MSG with ARGS in the interaction buffer with PROPERTIES."
+  (treadmill--with-connection
+   (with-current-buffer treadmill-interaction-buffer
+     (save-excursion
+      (goto-char treadmill-ia-mark)
+      (beginning-of-line)
+      (treadmill--inserting
+       (treadmill--propertizing
+        properties
+        (insert ";; ")
+        (insert (apply #'message msg args))
+        (insert "\n")))))))
+
+(defun treadmill-ia-message (msg &rest args)
+  (apply #'treadmill-ia-propertized-message
+         '(face font-lock-comment-face)
+         msg
+         args)
+  (apply #'message msg args))
+
+(defun treadmill-ia-warn (msg &rest args)
+  (apply #'treadmill-ia-propertized-message
+         '(face font-lock-warning-face)
+         msg
+         args)
+  (apply #'warn msg args))
+
 (defun treadmill-issue-prompt ()
   "Issue a fresh prompt.  Useful if Treadmill gets confused."
   (interactive)
@@ -626,9 +654,9 @@ position.  Otherwise, function just as MOVE-BEGINNING-OF-LINE."
             (lambda (val)
               (let ((stderr (caddr val)))
                 (if (string-empty-p stderr)
-                    (message "Module %s reloaded" mod)
-                  (warn "Error while reloading module %s: %s"
-                        mod stderr)))))))))
+                    (treadmill-ia-message "Module %s reloaded" mod)
+                  (treadmill-ia-warn "Error while reloading module %s: %s"
+                                     mod (string-trim stderr))))))))))
 
 (defun treadmill-gerbil-import-module ()
   "Import module associated with current buffer."
@@ -644,9 +672,10 @@ position.  Otherwise, function just as MOVE-BEGINNING-OF-LINE."
             (lambda (val)
               (let ((stderr (caddr val)))
                 (if (string-empty-p stderr)
-                    (message "Module %s imported" mod)
-                  (warn "Error while importing module %s: %s"
-                        mod stderr)))))))))
+                    (treadmill-ia-message "Module %s imported" mod)
+
+                  (treadmill-ia-warn "Error while importing module %s: %s"
+                        mod (string-trim stderr))))))))))
 
 ;;;###autoload
 (define-minor-mode treadmill-gerbil-mode
