@@ -361,7 +361,7 @@ prompt."
         (b (current-buffer)))
     (goto-char (point-max))
     (treadmill--insert "\n")
-    (treadmill--eval-io-async
+    (treadmill-eval-io-async
      (treadmill--plugin-fold 'expression s)
      stdin
      treadmill-current-module
@@ -467,22 +467,23 @@ a no-value result hangs this procedure."
         ((null mod) "#f")
         (t (format "'%s" mod))))
 
-(defun treadmill--eval-io-async (expr-string input-string module completion)
+(defun treadmill-eval-io-async (expr-string input-string module completion)
   "Evaluate EXPR-STRING with INPUT-STRING as standard input.
 
 In the context of MODULE, evaluate EXPR-STRING in the network
 REPL, providing INPUT-STRING as input via a string input port.
 When complete, invoke COMPLETION with the results of the
 evaluation."
-  (let ((p treadmill--repl-process))
-    (with-current-buffer (process-buffer p)
-      (erase-buffer)
-      (setq treadmill--repl-awaiting-value t)
-      (set-process-filter p (treadmill--repl-completion-filter completion))
-      (let ((s (format "(eval/sentinel (eval-string/input-string %S %S %s))\n"
-                       expr-string input-string
-                       (treadmill--module-string module))))
-        (process-send-string p s)))))
+  (treadmill--with-connection
+   (let ((p treadmill--repl-process))
+     (with-current-buffer (process-buffer p)
+       (erase-buffer)
+       (setq treadmill--repl-awaiting-value t)
+       (set-process-filter p (treadmill--repl-completion-filter completion))
+       (let ((s (format "(eval/sentinel (eval-string/input-string %S %S %s))\n"
+                        expr-string input-string
+                        (treadmill--module-string module))))
+         (process-send-string p s))))))
 
 (defun treadmill--repl-quit ()
   "Tear down processes and delete buffers associated with the network REPL."
@@ -520,7 +521,7 @@ display the resulting values in the message area."
                         (get-buffer treadmill-current-interaction-buffer))))
         (let ((module (treadmill-gerbil-current-module)))
           (with-current-buffer ia-b
-            (treadmill--eval-io-async
+            (treadmill-eval-io-async
              sexp "" module
              (lambda (val)
                (if arg
@@ -612,6 +613,41 @@ position.  Otherwise, function just as MOVE-BEGINNING-OF-LINE."
   (make-local-variable 'after-change-functions)
   (run-hooks 'treadmill-mode-hook))
 
+(defun treadmill-gerbil-refresh-module ()
+  "Reload if current buffer has a non-toplevel module associated with it."
+  (interactive)
+  (let ((mod (treadmill-gerbil-current-module)))
+    (cond ((eq mod -1) (message "Cannot reload a toplevel buffer"))
+          ((null mod) (message "No current module"))
+          (t
+           (message "Reloading %s" mod)
+           (treadmill-eval-io-async
+            (format "(reload! :%s)" mod) "" "thunknyc/treadmill"
+            (lambda (val)
+              (let ((stderr (caddr val)))
+                (if (string-empty-p stderr)
+                    (message "Module %s reloaded" mod)
+                  (warn "Error while reloading module %s: %s"
+                        mod stderr)))))))))
+
+(defun treadmill-gerbil-import-module ()
+  "Import module associated with current buffer."
+  (interactive)
+  (let ((mod (treadmill-gerbil-current-module)))
+    (cond ((eq mod -1) (message "Cannot import a toplevel buffer"))
+          ((null mod) (message "No current module"))
+          (t
+           (message "Importing %s" mod)
+           (treadmill-eval-io-async
+            (format "(import :%s)" mod) ""
+            (treadmill--with-connection treadmill-current-module)
+            (lambda (val)
+              (let ((stderr (caddr val)))
+                (if (string-empty-p stderr)
+                    (message "Module %s imported" mod)
+                  (warn "Error while importing module %s: %s"
+                        mod stderr)))))))))
+
 ;;;###autoload
 (define-minor-mode treadmill-gerbil-mode
   "Mode for talking to Treadmill in Gerbil buffers."
@@ -621,6 +657,8 @@ position.  Otherwise, function just as MOVE-BEGINNING-OF-LINE."
             (define-key map (kbd "C-c C-e") 'treadmill-gerbil-eval-toplevel)
             (define-key map (kbd "C-x C-e") 'treadmill-gerbil-eval-last)
             (define-key map (kbd "C-c C-z") 'treadmill-gerbil-switch)
+            (define-key map (kbd "C-c TAB") 'treadmill-gerbil-import-module)
+            (define-key map (kbd "C-c C-r") 'treadmill-gerbil-refresh-module)
             (define-key map (kbd "C-M-x") 'treadmill-gerbil-eval-toplevel)
             (define-key map (kbd "C-c m") 'treadmill-gerbil-enter-module)
             (treadmill--plugin-fold 'gerbil-keymap map))

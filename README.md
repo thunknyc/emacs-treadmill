@@ -95,7 +95,16 @@ evaluate them in the current module.
 | `C-c C-e` | Evaluate the current region. |
 | `C-c C-c`, `C-M-x` | Evaluate the current toplevel. |
 | `C-c m` | Change the buffer's current module, overriding the module discerned from the nearest `gerbil.pkg` file. |
+| `C-c C-r` | Reload the module corresponding to the current buffer. |
+| `C-c TAB` | Import the module corresponding to the current buffer. |
 | `C-c C-z` | Switch to the current Treadmill interaction buffer. |
+
+In addition to Treadmill bindings in Gerbil buffers, some Gerbil mode commands remain relevant:
+
+| Binding | Description |
+| --- | --- |
+| `C-c C-b` | Build. |
+| `C-c C-f` | Compile current buffer. |
 
 ## Plugins
 
