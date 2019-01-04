@@ -381,6 +381,24 @@ prompt."
          (insert (format "```")))))
     (if values (insert "\n"))))
 
+(defvar-local treadmill--eval-cancelled nil)
+
+(defun treadmill-ia-eval-cancel ()
+  "Cancel on ongoing interactive evaluation."
+  (interactive)
+  (cond ((not treadmill--repl-awaiting-value)
+         (message "No ongoing evaluation"))
+        (t
+         (process-send-string
+          treadmill--repl-process
+          (unibyte-string #xff #xf4 #x04))
+         (setq treadmill--repl-awaiting-value nil)
+         (setq treadmill--eval-cancelled t)
+         (treadmill--propertizing '(face font-lock-warning-face)
+                                  (treadmill--insert "cancelled\n"))
+         (setq treadmill--repl-awaiting-value nil)
+         (treadmill-issue-prompt))))
+
 (defun treadmill-ia-eval ()
   "Evaluate the expression(s) in the current input."
   (interactive)
@@ -389,15 +407,23 @@ prompt."
         (b (current-buffer)))
     (goto-char (point-max))
     (treadmill--insert "\n")
-    (treadmill-eval-io-async
-     (treadmill--plugin-fold 'expression s)
-     stdin
-     treadmill-current-module
-     (lambda (result)
-       (with-current-buffer b
-         (goto-char (point-max))
-         (treadmill--inserting (treadmill--insert-result result))
-         (treadmill-issue-prompt))))))
+    (let ((feedback-point (point)))
+      (treadmill--propertizing '(face font-lock-comment-face)
+                               (treadmill--insert ";;; Evaluating..."))
+      (setq treadmill--repl-awaiting-value t)
+      (setq treadmill--eval-cancelled nil)
+      (treadmill-eval-io-async
+       (treadmill--plugin-fold 'expression s)
+       stdin
+       treadmill-current-module
+       (lambda (result)
+         (with-current-buffer b
+           (setq treadmill--repl-awaiting-value nil)
+           (delete-region feedback-point (point-max))
+           (goto-char (point-max))
+           (treadmill--inserting (treadmill--insert-result result))
+           (treadmill-issue-prompt)
+           (goto-char (point-max))))))))
 
 ;;;###autoload
 (defun treadmill-connect (host port)
@@ -406,7 +432,6 @@ prompt."
    "sConnect to network REPL at host: \nsREPL port on %s: \n")
   (let* ((repl-b (generate-new-buffer "*treadmill-repl*"))
          (repl-p (open-network-stream "treadmill-repl"
-
                                       repl-b host port)))
     ;; If treadmill--spawn-process is defined it means we're in the
     ;; spawn buffer and we should connect the spawn buffer with the
@@ -469,9 +494,6 @@ prompt."
                    (get-buffer treadmill-current-interaction-buffer))))
          (with-current-buffer ,temp-b ,@exprs)))))
 
-(defvar-local treadmill--eval-waiting nil
-  "Indication that a blocking network REPL evaluation is occurring.")
-
 (defvar-local treadmill--eval-value nil
   "Value of last blocking network REPL evaluation.")
 
@@ -483,15 +505,15 @@ protection and return the value.  The S parameter should be
 an expression that returns a value (not e.g. `(define foo 42)` as
 a no-value result hangs this procedure."
   (treadmill--with-connection
-   (setq treadmill--eval-waiting t)
+   (setq treadmill--eval-awaiting-value t)
      (let ((b (current-buffer)))
        (treadmill-eval1-async
         s
         (lambda (val)
           (with-current-buffer b
             (setq treadmill--eval-value val)
-            (setq treadmill--eval-waiting nil)))))
-     (while treadmill--eval-waiting
+            (setq treadmill--eval-awaiting-value nil)))))
+     (while treadmill--eval-awaiting-value
        (sleep-for 0 50))
      treadmill--eval-value))
 
@@ -634,6 +656,7 @@ position.  Otherwise, function just as MOVE-BEGINNING-OF-LINE."
     (define-key map (kbd "C-c m") 'treadmill-ia-enter-module)
     (define-key map (kbd "C-c q") 'treadmill-ia-quit)
     (define-key map (kbd "C-a") 'treadmill-move-beginning-of-line)
+    (define-key map (kbd "C-c C-c") 'treadmill-ia-eval-cancel)
     (treadmill--plugin-fold 'keymap map)))
 
 ;;;###autoload
