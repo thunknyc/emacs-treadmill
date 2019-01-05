@@ -340,7 +340,7 @@ prompt."
 (defun treadmill-ia-enter-module (module)
   "Use MODULE when evaluated expressions."
   (interactive "sEnter module: (\"\" for TOP): ")
-  (setq treadmill-current-module (treadmill--normalze-module-string module))
+  (setq treadmill-current-module (treadmill--normalize-module-string module))
   (let ((unsent-input (buffer-substring-no-properties
                        treadmill-ia-mark (point-max))))
     (goto-char (point-max))
