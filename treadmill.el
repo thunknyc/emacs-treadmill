@@ -185,7 +185,10 @@ TREADMILL-INTERPRETER-NAME."
 
 (defun treadmill--command ()
   "Return the command to execute when spawning Gerbil interpreter."
-  (list (treadmill--gxi-location)))
+  (list (treadmill--gxi-location)
+        "-e" "(import :thunknyc/treadmill)"
+        "-e" "(enter-debugger-on-interrupt!)"
+        "-e" "(start-treadmill!)"))
 
 (defun treadmill--extract-result ()
   "Return a true value when buffer contains a well-formatted result."
@@ -468,11 +471,10 @@ prompt."
                           :filter 'treadmill--spawn-filter)))
     (with-current-buffer b
       (setq treadmill--spawn-process p)
-      (let ((forms (treadmill--plugin-fold
-                    'init-forms
-                    "(import :thunknyc/treadmill) (start-treadmill!)")))
-        (process-send-string p forms)
-        (process-send-string p "\n")))))
+      (let ((forms (treadmill--plugin-fold 'init-forms "")))
+        (when (not (string-empty-p forms))
+          (process-send-string p forms)
+          (process-send-string p "\n"))))))
 
 (defun treadmill-eval1-async (s completion)
   "Evaluate S in network REPL and invoke COMPLETION when done."
