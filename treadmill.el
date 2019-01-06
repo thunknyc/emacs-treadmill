@@ -187,7 +187,6 @@ TREADMILL-INTERPRETER-NAME."
   "Return the command to execute when spawning Gerbil interpreter."
   (list (treadmill--gxi-location)
         "-e" "(import :thunknyc/treadmill)"
-        "-e" "(enter-debugger-on-interrupt!)"
         "-e" "(start-treadmill!)"))
 
 (defun treadmill--extract-result ()
