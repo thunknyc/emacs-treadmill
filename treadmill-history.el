@@ -3,6 +3,16 @@
 ;; Copyright © 2018-9 Thunk NYC Corp.
 ;;
 ;; Author: Edwin Watkeys <edw@poseur.com>
+;;
+;; URL: https://github.com/thunknyc/emacs-treadmill
+;; Keywords: languages gerbil scheme lisp
+;; Version: 0.1-snapshot
+;; Package-Requires: ((emacs "25.1") (company "0.9.0") (cl-lib "0.3"))
+
+;;; Commentary:
+
+;; This package is part of thw Treadmill project.  It provides a
+;; history facility in for Treadmill interaction buffers.
 
 ;;; License:
 
@@ -29,6 +39,8 @@
 ;; SOFTWARE.
 
 ;;; Code:
+
+(declare-function treadmill-plugin-null-hook "treadmill")
 
 (defvar-local treadmill-history--buffer nil
   "Buffer in which history items are stored and retrieved.")

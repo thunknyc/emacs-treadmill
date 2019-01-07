@@ -88,7 +88,10 @@
 
 ;;;###autoload
 (defun treadmill-plugin-null-hook (event arg)
-  "The no-op plugin handler."
+  "The no-op plugin handler.
+
+Handle filter or notification EVENT and ARG in the event that
+your handler does not."
   (cond ((eq event 'command) arg)
         ((eq event 'init-forms) arg)
         ((eq event 'keymap) arg)
@@ -116,6 +119,7 @@
     arg))
 
 (defun treadmill--plugin-hook (event arg)
+  "Notify reigstered hook functions that EVENT(ARG) occurred."
   (run-hook-with-args 'treadmill-plugin-functions event arg))
 
 (defun treadmill--find-pkg (dir)
@@ -190,7 +194,7 @@ TREADMILL-INTERPRETER-NAME."
         "-e" "(start-treadmill!)"))
 
 (defun treadmill--extract-result ()
-  "Return a true value when buffer contains a well-formatted result."
+  "If the process buffer does contain a result, return it."
   (goto-char (point-min))
   (let ((bom (search-forward-regexp "^\\(> \\)\\{0,1\\}|\\([-0-9a-fA-F]\\{36\\}\\)>>" 42 t)))
     (when bom
@@ -202,7 +206,7 @@ TREADMILL-INTERPRETER-NAME."
           (buffer-substring-no-properties 40 (match-beginning 0)))))))
 
 (defun treadmill--repl-completion-filter (proc)
-  "Construct an evaluation REPL process filter."
+  "Construct a process filter that will call PROC when a result is ready."
   (lambda (p s)
     ;; Boilerplate
     (when (buffer-live-p (process-buffer p))
@@ -302,6 +306,9 @@ EXPRS are evaluated and the value of POINT afterwards."
         (insert "\n")))))))
 
 (defun treadmill-ia-message (msg &rest args)
+  "Issue message MSG format string and ARGS to interaction buffer.
+
+Also issue a conventional message."
   (apply #'treadmill-ia-propertized-message
          '(face font-lock-comment-face)
          msg
@@ -309,6 +316,9 @@ EXPRS are evaluated and the value of POINT afterwards."
   (apply #'message msg args))
 
 (defun treadmill-ia-warn (msg &rest args)
+  "Issue MSG format string and ARGS to interaction buffer as a warning.
+
+Also issue a conventional warning."
   (apply #'treadmill-ia-propertized-message
          '(face font-lock-warning-face)
          msg
@@ -506,15 +516,15 @@ protection and return the value.  The S parameter should be
 an expression that returns a value (not e.g. `(define foo 42)` as
 a no-value result hangs this procedure."
   (treadmill--with-connection
-   (setq treadmill--eval-awaiting-value t)
+   (setq treadmill--repl-awaiting-value t)
      (let ((b (current-buffer)))
        (treadmill-eval1-async
         s
         (lambda (val)
           (with-current-buffer b
-            (setq treadmill--eval-value val)
-            (setq treadmill--eval-awaiting-value nil)))))
-     (while treadmill--eval-awaiting-value
+            (setq treadmill--repl-value val)
+            (setq treadmill--repl-awaiting-value nil)))))
+     (while treadmill--repl-awaiting-value
        (sleep-for 0 50))
      treadmill--eval-value))
 

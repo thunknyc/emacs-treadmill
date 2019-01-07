@@ -3,6 +3,17 @@
 ;; Copyright © 2018-9 Thunk NYC Corp.
 ;;
 ;; Author: Edwin Watkeys <edw@poseur.com>
+;;
+;; URL: https://github.com/thunknyc/emacs-treadmill
+;; Keywords: languages gerbil scheme lisp
+;; Version: 0.1-snapshot
+;; Package-Requires: ((emacs "25.1") (company "0.9.0") (cl-lib "0.3"))
+
+;;; Commentary:
+
+;; This package is part of thw Treadmill project.  It provides symbol
+;; completion in Treadmill interaction buffers as well as Gerbil
+;; buffers where treadmill-gerbil-mode is enabled.
 
 ;;; License:
 
@@ -31,8 +42,11 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'company)
+(require 'subr-x)
 
 (declare-function treadmill-eval1 "treadmill")
+(declare-function treadmill-plugin-null-hook "treadmill")
 
 (defun treadmill-complete--symbol-meta (name)
   "Return completion metadata for NAME using network REPL."
